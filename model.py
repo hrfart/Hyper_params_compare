@@ -10,7 +10,7 @@ data_dir='data_sets'
 output_file='results.csv'
 
 #0-mimic,1-MNIST,2-housing,3-brains
-dataset=1
+dataset=2
 
 #0-random grid search
 optmethod=0
@@ -73,6 +73,8 @@ def main():
 	plt.savefig(sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".png")
 	plt.clf()
 	
+	#probably also a good idea to save the data so we can make more involved plots later.
+	joblib.dump(all,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl")
 
 
 
