@@ -30,12 +30,19 @@ Number of layers and nodes are treated as hyperparameters, along with learning r
 Dependencies include:
 
 numpy (https://numpy.org)
+
 sklearn (https://scikit-learn.org)
+
 matplotlib (https://matplotlib.org)
+
 tensorflow (https://www.tensorflow.org)
+
 tensorflow_addons (https://www.tensorflow.org/addons)
+
 mlxtend.data (http://rasbt.github.io/mlxtend/)
+
 joblib (https://joblib.readthedocs.io/en/latest/)
+
 
 NOTE: The code is currently set up to be run on a CUDA GPU. If one is not available, lines 11-18 need to be commented out. 
 If a GPU is available but not being utilized, try LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64 TF_XLA_FLAGS=--tf_xla_cpu_global_jit  python model.py
