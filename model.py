@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow_addons import optimizers
 import matplotlib.pyplot as plt
 import sklearn.metrics
-
+from shutil import copyfile
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
 os.environ["CUDA_VISIBLE_DEVICES"]="4"
@@ -114,7 +114,7 @@ def main():
 #and hyper parameters in opts. Also pass in which optimization method is calling it.
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method):
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, path=None):
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]
@@ -148,7 +148,10 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     
     outputs=float(outputs)
     #path to save wights to
-    weightspath=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.hdf5'
+    if path==None:
+        weightspath=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.hdf5'
+    else:
+        weightspath='pbt_weights'+str(path)+'_0.hdf5'
     #outputlayer and compile.
     if dataset>1:
         model.add(tf.keras.layers.Dense(1,bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
@@ -174,6 +177,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     print('fitting model')
     history_callback = model.fit(trainx,trainy, epochs=iterations,validation_data=(valx,valy), callbacks=callbacks_list,batch_size=512)
     
+    #don't do additional analyses if the hyper-paramater method is PBT.
     
     print('loading best model')
     #load best model
@@ -185,33 +189,117 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     else:
         model.compile(optimizer=adam, loss='binary_crossentropy')
     
-    #save loss curves
-    a={}
-    out=sets[dataset]+'.'+methods[method]+'_losses.pkl'
-    if os.path.exists(out):
-        a=joblib.load(out)
-    time=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    a[time+'train']=np.array(history_callback.history["loss"])
-    a[time+'val']=np.array(history_callback.history["val_loss"])
-    joblib.dump(a,out)
-    if save_loss_curves:
-        loss_history = np.array(history_callback.history["loss"])
-        valloss_history = np.array(history_callback.history["val_loss"])
-        train, = plt.plot(range(len(loss_history)),loss_history,'k--', label='train')
-        val, = plt.plot(range(len(loss_history)),valloss_history,'r--', label='val')
-        plt.legend([train,val], ['Train Loss', 'Validation Loss'])
-        #plt.axis([0,len(loss_history),0,100])
-        plt.savefig('loss_curves/'+sets[dataset]+'-'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.png')
-        plt.clf()
+    #don't save loss curves for pbt
+    if path==None:
+        #save loss curves
+        a={}
+        out=sets[dataset]+'.'+methods[method]+'_losses.pkl'
+        if os.path.exists(out):
+            a=joblib.load(out)
+        time=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        a[time+'train']=np.array(history_callback.history["loss"])
+        a[time+'val']=np.array(history_callback.history["val_loss"])
+        joblib.dump(a,out)
+        if save_loss_curves:
+            loss_history = np.array(history_callback.history["loss"])
+            valloss_history = np.array(history_callback.history["val_loss"])
+            train, = plt.plot(range(len(loss_history)),loss_history,'k--', label='train')
+            val, = plt.plot(range(len(loss_history)),valloss_history,'r--', label='val')
+            plt.legend([train,val], ['Train Loss', 'Validation Loss'])
+            #plt.axis([0,len(loss_history),0,100])
+            plt.savefig('loss_curves/'+sets[dataset]+'-'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.png')
+            plt.clf()
             
-    #delete weights 
-    os.remove(weightspath)
-    #get test and validation outputs
+        #delete weights 
+    
+            os.remove(weightspath)
+        #get test and validation outputs
     print('evaluating on test and val data')
     
     return model.evaluate(valx,valy),model.evaluate(testx,testy),model.predict(testx)
 
+
+############# Run a given model and return validation loss 
+#inputs dataset #,data, hyperparamters and:
+#round= which set this is
+#time since the val last improved (integer value)
+#the previous val loss
+def pbt_model_update(dataset,trainx,trainy,valx,valy,testx,testy,opts,round,time_since_val_improve,prev_val_loss)
     
+    #BUILD MODEL
+    layers=int(opts[0])
+    nodes=int(opts[1])
+    learnrate=opts[2]
+    beta1=opts[3]
+    beta2=opts[4]
+    eps=opts[5]
+    decay=opts[6]
+    
+    #set up optimizer
+    adam=optimizers.AdamW(decay,learning_rate=learnrate,beta_1=beta1,beta_2=beta2,epsilon=eps)
+    
+    #get shape of output data
+    if testy.ndim>1:
+        outputs=testy.shape[1]
+    else:
+        outputs=1
+        
+    #build model
+    model = tf.keras.models.Sequential()
+    
+    #input layer
+    if dataset==3 and nodes==532: #brain image data is too big to allocate the memory for this, so use second largest size
+        nodes=264
+    
+    model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+    
+    
+    #additional hiddenlayers
+    for f in range(layers-1):
+        model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+    
+    
+    
+    
+    
+    
+    #Figure out which weights we're loading and which we're saving
+    lastweightspath='pbt_weights'+str(path)+'_'+str(time_since_val_improve)+'.hdf5'
+    weightspath='pbt_weights'+str(path)+'_'+str(time_since_val_improve+1)+'.hdf5'
+    
+    
+    
+    
+    
+    #finish building models with stoping points
+    if dataset>1:
+        model.add(tf.keras.layers.Dense(1,bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+        model.load_weights(lastweightspath)
+        model.compile(optimizer=adam, loss='mean_squared_error',  metrics=['mean_squared_error','mean_absolute_error'])
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
+    elif dataset==1:
+        model.add(tf.keras.layers.Dense(outputs, activation='softmax',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+        model.load_weights(lastweightspath)
+        model.compile(optimizer=adam, loss='categorical_crossentropy',  metrics=['acc'])
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
+    else:
+        model.add(tf.keras.layers.Dense(outputs, activation='sigmoid',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+        model.load_weights(lastweightspath)
+        model.compile(optimizer=adam, loss='binary_crossentropy',  metrics=['acc'])
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
+
+    callbacks_list = [checkpoint]
+
+    print('fitting model')
+    model.fit(trainx,trainy, epochs=1,validation_data=(valx,valy), callbacks=callbacks_list,batch_size=512)
+    
+    #see if it improved.
+    cur_val=model.evaluate(valx,valy)
+    if cur_val<time_since_val_improve:
+        copyfile('pbt_weights'+str(path)+'_'+str(time_since_val_improve+1)+'.hdf5','pbt_weights'+str(path)+'_'+'_0.hdf5')
+    print('evaluating on test and val data')
+    
+    return cur_val,model.evaluate(testx,testy),model.predict(testx)
 
 
 ##########################################    DATA LOADER Section   ##########################################################
