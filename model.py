@@ -1,7 +1,7 @@
 import joblib
 import numpy as np
 from mlxtend.data import loadlocal_mnist
-import os,datetime
+import os, datetime
 import tensorflow as tf
 from tensorflow_addons import optimizers
 import matplotlib.pyplot as plt
@@ -18,8 +18,9 @@ config.gpu_options.allow_growth = True
 session = InteractiveSession(config=config)
 
 
-data_dir='data_sets'
-output_file='results.csv'
+data_dir = 'data_sets'
+output_file = 'results.csv'
+
 
 save_loss_curves=False
 
@@ -45,14 +46,30 @@ grid_iters=100
 iterations=300
 pat=15
 
-
 #datasets
 sets=['mimic','MNIST','housing','NKI']
 methods=['random grid','Bayes','HYPERBAND','ORGD']
 
+# ranges to search through
+NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
+layer_opts = [1, 2, 3, 4, 5, 6]
+node_opts = [32, 64, 128, 256, 532]
+learnrate_opts = np.linspace(1e-5, 1e-2, 100)
+beta1_opts = np.linspace(.85, .95, 100)
+beta2_opts = np.linspace(.9, .99999, 100)
+eps_opts = np.linspace(1e-9, 1e-7, 100)
+decay_opts = np.linspace(0, .1, 100)
 
+# iterations for random grid search
+iters = 100
 
+# for each run of the model
+iterations = 100
+pat = 10
 
+# datasets
+sets = ['mimic', 'MNIST', 'housing', 'NKI']
+methods = ['random grid', 'Bayes', 'HYPERBAND', 'ORGD']
 
 
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
@@ -90,11 +107,7 @@ def main():
         joblib.dump(all,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl")
 
 
-
-
 ##########################################    BASE MODEL SECTION   ##########################################################
-
-
 
     
 #builds a model with data trainx,trainy,valx,valy,testx,testy,      limits iters and max iters,
@@ -199,21 +212,14 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     return model.evaluate(valx,valy),model.evaluate(testx,testy),model.predict(testx)
 
     
-    
-        
-        
-
-
-
 
 
 ##########################################    DATA LOADER Section   ##########################################################
 
 
-#Accepts dataset as input: 0 is mimic, 2 is MNIST, 3 housing, 4 is brains
-#outputs data in order trainx,trainy,valx,valy,testx,testy.
+# Accepts dataset as input: 0 is mimic, 2 is MNIST, 3 housing, 4 is brains
+# outputs data in order trainx,trainy,valx,valy,testx,testy.
 def loaddata(dataset):
-    
     #load Mimic. 
     #Mimic is already split 70,15,15
     if dataset==0:
