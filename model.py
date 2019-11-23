@@ -16,6 +16,7 @@ dataset = 2
 optmethod = 0
 
 # ranges to search through
+NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
 layer_opts = [1, 2, 3, 4, 5, 6]
 node_opts = [32, 64, 128, 256, 532]
 learnrate_opts = np.linspace(1e-5, 1e-2, 100)
@@ -272,45 +273,6 @@ def randomgridsearch(dataset, trainx, trainy, valx, valy, testx, testy):
             best = np.copy(current)
 
     return lowestval, lowesttest, best, all
-
-
-####################################  HYPERBAND SECTION   ######################################################
-# INPUT:
-#   R = Maximum amount of resource that can be allocated to a single configuration
-#   h = Larger h means more aggressive elimination schedule.  h = 3 or 4 is recommended.
-#   dataset,trainx,trainy,valx,valy,testx,testy
-#
-# OUTPUT:
-#   lowestval,lowesttest,best,all
-#
-#   lowestval = loss over validation set of final configuration (algorithm attempts to minimize this)
-#   finaltest = loss over test set of final configuration (generalization error, which does not control algorithm)
-#   best = best hyperparameter configuration chosen (corresponds to lowestval and finaltest)
-#   all =
-def hyperband(R, h, dataset, trainx, trainy, valx, valy, testx, testy):
-    # Initialize smax and budget
-    smax = np.floor(np.log(R) / np.log(h))
-    B = (smax + 1) * R
-
-    # For each bracket, run successive halving
-    for s in np.arange(smax, 0, -1):
-        # n is the number of configurations to run successive halving over
-        n = np.ceil((B * h ** s) / (R * (s + 1)))
-        # r is the minimum resource allocated to all configurations
-        r = R * h ** (-s)
-
-        # Begin SuccessiveHalving(n,r) inner loop
-
-
-# Function to return a set T of hyperparameter configurations
-# n = number of hyperparameter configurations to return, i.e. cardinality of T
-def get_hyperparameter_configuration(n):
-    return
-
-
-# Function to return top k performing hyperparameter configurations in a set, based on loss L
-def top_k_configurations(T, L, k):
-    return
 
 
 if __name__ == "__main__":
