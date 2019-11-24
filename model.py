@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-use_cuda=True
+use_cuda=False
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
 os.environ["CUDA_VISIBLE_DEVICES"]="4"
@@ -86,7 +86,7 @@ def main():
     
         #do random grid search
         if optmethod==0:    
-            lowestval,lowesttest,best,all=randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy)
+            lowestval,lowesttest,best,all=randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy)
         
     
     
