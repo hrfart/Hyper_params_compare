@@ -185,7 +185,7 @@ def longCEL(x,y):
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
 #the four optional parameters are for the PBT method only.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, run=None, path=None, load=None, evaluate=False):
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, run=None, path=None, loadrun=None, load=None, evaluate=False):
     
     
     layers=int(opts[0])
@@ -204,9 +204,9 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
     optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
     if load!=None:
-        model=torch.load(str(run)+'.'+str(load)+'.pt')
+        model=torch.load(str(loadrun)+'.'+str(load)+'.pt')
         optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
-        optimizer.load_state_dict(torch.load(str(run)+'.'+str(load)+'.opt.pt'))
+        optimizer.load_state_dict(torch.load(str(loadrun)+'.'+str(load)+'.opt.pt'))
     
     #loss function
     loss_func=torch.nn.MSELoss()
@@ -522,7 +522,7 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
         bestloss=np.inf
         timesinceimprove=1
         for i in range(1,iterations):
-            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,timesinceimprove-1)
+            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,run,timesinceimprove-1)
             if loss<bestloss:
                 bestloss=loss
                 copyfile(str(run)+'.'+str(timesinceimprove)+'.opt.pt',str(run)+'.'+'0.opt.pt')
@@ -534,7 +534,7 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
                 break
         
         #do evaluation
-        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,0,evaluate=True)
+        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,run,0,evaluate=True)
         
         all[f]=loss
         
