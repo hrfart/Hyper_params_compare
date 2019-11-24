@@ -1,4 +1,4 @@
-# Hyper_params_compare# Hyper_params_compare
+# Hyper_params_compare
 
 This repository contains a comparison of Hyper-paramater optimization methods.
 Each method is implemented from scratch.
@@ -11,7 +11,7 @@ The Hyperparameter optimization methods to be compared are:
 4) Population Based Training [3]
 
 Four Data sets are used for evaluation
-(located in /data_sets; although MIMIC is not availablebecause it was too large to be hosted here but is available online):
+(located in /data_sets; although MIMIC is not available because it was too large to be hosted here but is available online):
 
 1) The Boston Housing data set: Predicting house price (https://www.cs.toronto.edu/~delve/data/boston/bostonDetail.html)
 2) MNIST: Hand-digit recognition [4]
