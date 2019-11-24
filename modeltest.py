@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-use_cuda=True
+use_cuda=False
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
 os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
@@ -65,7 +65,7 @@ eps_opts = np.linspace(1e-9, 1e-7, 100)
 decay_opts = np.linspace(0, .1, 100)
 
 # iterations for random grid search
-iters = 100
+iters = 200
 
 # for each run of the model
 iterations = 300
@@ -79,7 +79,7 @@ methods = ['random grid', 'Bayes', 'HYPERBAND', 'PBT']
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
 
 def main():
-    for dataset in [2,1,0,3]:
+    for dataset in [2]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
     
@@ -291,8 +291,6 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                 output = model.forward(data,dataset,layers)
                 test_loss += loss_func(output, target).item()  # sum up batch loss
                 for t in output:
-                    if use_cuda:
-                        t=t.cpu()
                     testout.append(t.numpy())
         return bestvalloss,test_loss,np.asarray(testout)
 
