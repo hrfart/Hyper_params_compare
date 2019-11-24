@@ -4,7 +4,7 @@ from mlxtend.data import loadlocal_mnist
 import os, datetime
 import matplotlib.pyplot as plt
 import sklearn.metrics
-
+from shutil import copyfile
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +13,7 @@ import torch.optim as optim
 use_cuda=True
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
-os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"]="4"
 # from tensorflow.python.compiler.xla import jit
 # from tensorflow.compat.v1 import ConfigProto
 # from tensorflow.compat.v1 import InteractiveSession
@@ -65,7 +65,7 @@ eps_opts = np.linspace(1e-9, 1e-7, 100)
 decay_opts = np.linspace(0, .1, 100)
 
 # iterations for random grid search
-iters = 100
+iters = 200
 
 # for each run of the model
 iterations = 300
@@ -202,13 +202,11 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     
     #set up model
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
-    
+    optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
     if load!=None:
         model=torch.load(str(load)+'.pt')
-        #MODIFY OPTIMZER HERE
-    else:
-        #set up optimizer
-        optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
+        optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
+        optimizer.load_state_dict(torch.load(str(load)+'.opt.pt'))
     
     #loss function
     loss_func=torch.nn.MSELoss()
@@ -223,7 +221,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     if path==None:
         weightspath=methods[method]+'.'+sets[dataset]+'.pt'
     else:
-        path=str(path)+'.pt'
+        weightspath=str(path)+'.pt'
     
 
     
@@ -263,13 +261,23 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                 output = model.forward(data,dataset,layers)
                 val_loss += loss_func(output, target).item()  
 
-        
+        if dataset<2:
+            val_loss /= len(val_loader)
         print(val_loss)
+        
+        
+        
+        if path!=None:
+            torch.save(model,weightspath)
+            torch.save(optimizer.state_dict(),str(path)+'.opt.pt')
+        
+        
         
         if val_loss<bestvalloss:
             bestvalloss=val_loss
             timesinceimprove=0
-            torch.save(model,weightspath)
+            if path==None:
+                torch.save(model,weightspath)
         else:
             timesinceimprove+=1
         if timesinceimprove>pat:
@@ -294,6 +302,8 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                     if use_cuda:
                         t=t.cpu()
                     testout.append(t.numpy())
+        if dataset<2:
+            test_loss /= len(test_loader)
         return bestvalloss,test_loss,np.asarray(testout)
 
 
@@ -438,6 +448,7 @@ def evaluation_plot(dataset,a,b):
     plt.clf()
 
 
+
 ###########################  RANDOM GRID SEARCH SECTION   ######################################################
 #inputs are data set to use, and the loaded data
 #outputs final val and test loss,best parameters chosen
@@ -478,6 +489,67 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
             
         
     return lowestval,lowesttest,best,all
+
+
+
+##PBT example model running
+def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
+    
+    #initialize best and current params
+    best=np.zeros(7)
+    current=np.zeros(7)
+    lowestval=np.inf
+    lowesttest=np.inf
+    
+    #to look at all
+    all=np.zeros(grid_iters)
+    
+    for f in range(grid_iters):
+        #do randomization
+        current[0]=layer_opts[np.random.randint(0,6)]
+        current[1]=node_opts[np.random.randint(0,5)]
+        current[2]=learnrate_opts[np.random.randint(0,100)]
+        current[3]=beta1_opts[np.random.randint(0,100)]
+        current[4]=beta2_opts[np.random.randint(0,100)]
+        current[5]=eps_opts[np.random.randint(0,100)]
+        current[6]=decay_opts[np.random.randint(0,100)]
+        
+        #calculate loss
+        loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,0)
+        
+        #set up 
+        bestloss=np.inf
+        timesinceimprove=1
+        for i in range(1,iterations):
+            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,timesinceimprove,timesinceimprove-1,)
+            if loss<bestloss:
+                bestloss=loss
+                copyfile(str(timesinceimprove)+'.opt.pt','0.opt.pt')
+                copyfile(str(timesinceimprove)+'.pt','0.pt')
+                timesinceimprove=1
+            else:
+                timesinceimprove+=1
+            if timesinceimprove>pat:
+                break
+        
+        #do evaluation
+        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,0,0,evaluate=True)
+        
+        all[f]=loss
+        
+        
+        
+        #if this is the best so far save parameters
+        if(loss<lowestval):
+            lowestval=loss
+            lowesttest=test
+            best=np.copy(current)
+            #plot best test results
+            evaluation_plot(dataset,testy,testeval)
+            
+        
+    return lowestval,lowesttest,best,all
+
 
 
 
