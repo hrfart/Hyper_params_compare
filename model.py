@@ -184,8 +184,8 @@ def longCEL(x,y):
 #and hyper parameters in opts. Also pass in which optimization method is calling it.
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
-#the three optional parameters are for the PBT method only.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, path=None, load=None, evaluate=False):
+#the four optional parameters are for the PBT method only.
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, run=None, path=None, load=None, evaluate=False):
     
     
     layers=int(opts[0])
@@ -204,9 +204,9 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
     optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
     if load!=None:
-        model=torch.load(str(load)+'.pt')
+        model=torch.load(str(run)+'.'+str(load)+'.pt')
         optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
-        optimizer.load_state_dict(torch.load(str(load)+'.opt.pt'))
+        optimizer.load_state_dict(torch.load(str(run)+'.'+str(load)+'.opt.pt'))
     
     #loss function
     loss_func=torch.nn.MSELoss()
@@ -221,7 +221,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     if path==None:
         weightspath=methods[method]+'.'+sets[dataset]+'.pt'
     else:
-        weightspath=str(path)+'.pt'
+        weightspath=str(run)+'.'+str(path)+'.pt'
     
 
     
@@ -269,7 +269,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
         
         if path!=None:
             torch.save(model,weightspath)
-            torch.save(optimizer.state_dict(),str(path)+'.opt.pt')
+            torch.save(optimizer.state_dict(),str(run)+'.'+str(path)+'.opt.pt')
         
         
         
@@ -514,18 +514,19 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
         current[5]=eps_opts[np.random.randint(0,100)]
         current[6]=decay_opts[np.random.randint(0,100)]
         
-        #calculate loss
-        loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,0)
+        
         
         #set up 
+        run=0 #which run out of 10 it is.
+        loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0)
         bestloss=np.inf
         timesinceimprove=1
         for i in range(1,iterations):
-            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,timesinceimprove,timesinceimprove-1,)
+            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,timesinceimprove-1)
             if loss<bestloss:
                 bestloss=loss
-                copyfile(str(timesinceimprove)+'.opt.pt','0.opt.pt')
-                copyfile(str(timesinceimprove)+'.pt','0.pt')
+                copyfile(str(run)+'.'+str(timesinceimprove)+'.opt.pt',str(run)+'.'+'0.opt.pt')
+                copyfile(str(run)+'.'+str(timesinceimprove)+'.pt',str(run)+'.'+'0.pt')
                 timesinceimprove=1
             else:
                 timesinceimprove+=1
@@ -533,7 +534,7 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
                 break
         
         #do evaluation
-        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,0,0,evaluate=True)
+        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,0,evaluate=True)
         
         all[f]=loss
         
