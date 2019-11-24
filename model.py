@@ -518,11 +518,12 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
         
         #set up 
         run=0 #which run out of 10 it is.
+        run_to_load=0
         loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0)
         bestloss=np.inf
         timesinceimprove=1
         for i in range(1,iterations):
-            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,run,timesinceimprove-1)
+            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,run_to_load,timesinceimprove-1)
             if loss<bestloss:
                 bestloss=loss
                 copyfile(str(run)+'.'+str(timesinceimprove)+'.opt.pt',str(run)+'.'+'0.opt.pt')
@@ -534,7 +535,7 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
                 break
         
         #do evaluation
-        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,run,0,evaluate=True)
+        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,run_to_load,0,evaluate=True)
         
         all[f]=loss
         
