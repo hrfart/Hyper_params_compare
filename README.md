@@ -3,7 +3,7 @@
 This repository contains a comparison of Hyper-paramater optimization methods.
 Each method is implemented from scratch.
 
-They Hyperparameter optimization methods to be compared are:
+The Hyperparameter optimization methods to be compared are:
 
 1) Random Grid search
 2) Bayesian Optimization [1] 
@@ -24,7 +24,7 @@ It is set up to loop through every Hyperparameter optimization model and dataset
 and outputs plots showing the data fit for the best hyperparameters found, and loss at each algorithm iteration.
 Also outputted are loss curves for each iteration and algorithm, and the optimal loss and hyperparameters found in a csv file.
 
-The model being optimized is a fully connected Neural network implemented in Tensorflow with an Adam optimizer.
+The model being optimized is a fully connected Neural network implemented in Pytorch with an Adam optimizer.
 Number of layers and nodes are treated as hyperparameters, along with learning rate, weight decay, and adam parameters beta1, beta2, and epsilon.
 
 Dependencies include:
@@ -35,19 +35,13 @@ sklearn (https://scikit-learn.org)
 
 matplotlib (https://matplotlib.org)
 
-tensorflow (https://www.tensorflow.org)
-
-tensorflow_addons (https://www.tensorflow.org/addons)
+pytorch (https://pytorch.org)
 
 mlxtend.data (http://rasbt.github.io/mlxtend/)
 
 joblib (https://joblib.readthedocs.io/en/latest/)
 
-
-NOTE: The code is currently set up to be run on a CUDA GPU. If one is not available, lines 11-18 need to be commented out. 
-If a GPU is available but not being utilized, try LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64 TF_XLA_FLAGS=--tf_xla_cpu_global_jit  python model.py
-
-
+Note: set up to run on a Cuda GPU. If one is unavailable, set use_cuda to false in line 13.
 
 References:
 

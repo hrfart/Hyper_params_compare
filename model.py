@@ -2,20 +2,24 @@ import joblib
 import numpy as np
 from mlxtend.data import loadlocal_mnist
 import os, datetime
-import tensorflow as tf
-from tensorflow_addons import optimizers
 import matplotlib.pyplot as plt
 import sklearn.metrics
-from shutil import copyfile
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+use_cuda=True
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
-from tensorflow.python.compiler.xla import jit
-from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
-config = ConfigProto()
-config.gpu_options.allow_growth = True
-session = InteractiveSession(config=config)
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
+# from tensorflow.python.compiler.xla import jit
+# from tensorflow.compat.v1 import ConfigProto
+# from tensorflow.compat.v1 import InteractiveSession
+# config = ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = InteractiveSession(config=config)
 
 
 data_dir = 'data_sets'
@@ -40,7 +44,7 @@ eps_opts=np.linspace(1e-9,1e-7,100)
 decay_opts=np.linspace(0,.05,100)
 
 #iterations FOR RANDOM GRIDSEARCH
-grid_iters=100
+grid_iters=200
 
 #for each run of the model
 iterations=300
@@ -48,7 +52,7 @@ pat=15
 
 #datasets
 sets=['mimic','MNIST','housing','NKI']
-methods=['random grid','Bayes','HYPERBAND','ORGD']
+methods=['random grid','Bayes','HYPERBAND','PBT']
 
 # ranges to search through
 NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
@@ -61,21 +65,21 @@ eps_opts = np.linspace(1e-9, 1e-7, 100)
 decay_opts = np.linspace(0, .1, 100)
 
 # iterations for random grid search
-iters = 100
+iters = 200
 
 # for each run of the model
-iterations = 100
-pat = 10
+iterations = 300
+pat = 15
 
 # datasets
 sets = ['mimic', 'MNIST', 'housing', 'NKI']
-methods = ['random grid', 'Bayes', 'HYPERBAND', 'ORGD']
+methods = ['random grid', 'Bayes', 'HYPERBAND', 'PBT']
 
 
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
 
 def main():
-    for dataset in [0,1,2,3]:
+    for dataset in [2,1,0,3]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
     
@@ -109,12 +113,79 @@ def main():
 
 ##########################################    BASE MODEL SECTION   ##########################################################
 
+#network class
+class Net(nn.Module):
+    def __init__(self,datashape,dataset,numlayers,numnodes):
+        super(Net, self).__init__()
+        self.fc1 = nn.Linear(datashape,numnodes)
+        if numlayers>1:
+            self.fc2=nn.Linear(numnodes,numnodes)
+        if numlayers>2:
+            self.fc3=nn.Linear(numnodes,numnodes)
+        if numlayers>3:
+            self.fc4=nn.Linear(numnodes,numnodes)
+        if numlayers>4:
+            self.fc5=nn.Linear(numnodes,numnodes)
+        if numlayers>5:
+            self.fc6=nn.Linear(numnodes,numnodes)
+        if dataset==1:
+             self.outfc=nn.Linear(numnodes,10)
+        else:
+            self.outfc=nn.Linear(numnodes,1)
+         
+    def forward(self, x,dataset,numlayers):
+        x = self.fc1(x)
+        x = F.relu(x)
+        if numlayers>1:
+             x = self.fc2(x)
+             x = F.relu(x)
+        if numlayers>2:
+             x = self.fc3(x)
+             x = F.relu(x)
+        if numlayers>3:
+             x = self.fc4(x)
+             x = F.relu(x)
+        if numlayers>4:
+             x = self.fc5(x)
+             x = F.relu(x)
+        if numlayers>5:
+             x = self.fc6(x)
+             x = F.relu(x)
+        out = self.outfc(x)
+        if dataset==0:
+            out=F.sigmoid(out)
+        if dataset==1:
+            out=F.log_softmax(out,dim=1)
+        return out
+
+
+
+#data set class  
+class torch_dataset(torch.utils.data.Dataset):
+    def __init__(self,datax,datay):
+        self.x=datax
+        self.y=datay
+        
+    def __len__(self):
+        return len(self.y)
+        
+    def __getitem__(self,idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        return self.x[idx,:],self.y[idx]
+        
+        
+def longCEL(x,y):
+    return torch.nn.CrossEntropyLoss(x,y)     
     
+    
+      
 #builds a model with data trainx,trainy,valx,valy,testx,testy,      limits iters and max iters,
 #and hyper parameters in opts. Also pass in which optimization method is calling it.
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, path=None):
+#the three optional parameters are for the PBT method only.
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, path=None, load=None, evaluate=False):
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]
@@ -123,183 +194,101 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     eps=opts[5]
     decay=opts[6]
     
+    
+    device = torch.device("cuda" if use_cuda else "cpu")
+    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    
+    #set up model
+    model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
+    
     #set up optimizer
-    adam=optimizers.AdamW(decay,learning_rate=learnrate,beta_1=beta1,beta_2=beta2,epsilon=eps)
+    optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
     
-    #get shape of output data
-    if testy.ndim>1:
-        outputs=testy.shape[1]
-    else:
-        outputs=1
-        
-    #build model
-    model = tf.keras.models.Sequential()
-    
-    #input layer
-    if dataset==3 and nodes==532: #brain image data is too big to allocate the memory for this, so use second largest size
-        nodes=264
-    
-    model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
+    #loss function
+    loss_func=torch.nn.MSELoss()
+    if dataset==0:
+        loss_func=torch.nn.BCELoss()
+    if dataset==1:
+        loss_func= F.nll_loss
     
     
-    #additional hiddenlayers
-    for f in range(layers-1):
-        model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
     
-    outputs=float(outputs)
-    #path to save wights to
+    #set up weightspath
     if path==None:
-        weightspath=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.hdf5'
+        weightspath=methods[method]+'.'+sets[dataset]+'.pt'
     else:
-        weightspath='pbt_weights'+str(path)+'_0.hdf5'
-    #outputlayer and compile.
-    if dataset>1:
-        model.add(tf.keras.layers.Dense(1,bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.compile(optimizer=adam, loss='mean_squared_error',  metrics=['mean_squared_error','mean_absolute_error'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=pat, verbose=1, save_best_only=True, mode='min')
-        checkpoint2=tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=pat, verbose=0, mode='min', baseline=None)
-    elif dataset==1:
-        model.add(tf.keras.layers.Dense(outputs, activation='softmax',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.compile(optimizer=adam, loss='categorical_crossentropy',  metrics=['acc'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=pat, verbose=1, save_best_only=True, mode='min')
-        checkpoint2=tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=pat, verbose=0, mode='min', baseline=None)
-    else:
-        model.add(tf.keras.layers.Dense(outputs, activation='sigmoid',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.compile(optimizer=adam, loss='binary_crossentropy',  metrics=['acc'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=pat, verbose=1, save_best_only=True, mode='min')
-        checkpoint2=tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=pat, verbose=0, mode='min', baseline=None)
-
-
-
-
-    callbacks_list = [checkpoint,checkpoint2]
-
-    print('fitting model')
-    history_callback = model.fit(trainx,trainy, epochs=iterations,validation_data=(valx,valy), callbacks=callbacks_list,batch_size=512)
+        path=str(path)+'.pt'
     
-    #don't do additional analyses if the hyper-paramater method is PBT.
+    if load!=None:
+        model=torch.load(str(load)+'.pt')
     
-    print('loading best model')
-    #load best model
-    model.load_weights(weightspath)
-    if dataset>1:
-        model.compile(optimizer=adam, loss='mean_squared_error')
-    elif dataset==1:
-        model.compile(optimizer=adam, loss='categorical_crossentropy')
-    else:
-        model.compile(optimizer=adam, loss='binary_crossentropy')
     
-    #don't save loss curves for pbt
-    if path==None:
-        #save loss curves
-        a={}
-        out=sets[dataset]+'.'+methods[method]+'_losses.pkl'
-        if os.path.exists(out):
-            a=joblib.load(out)
-        time=datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        a[time+'train']=np.array(history_callback.history["loss"])
-        a[time+'val']=np.array(history_callback.history["val_loss"])
-        joblib.dump(a,out)
-        if save_loss_curves:
-            loss_history = np.array(history_callback.history["loss"])
-            valloss_history = np.array(history_callback.history["val_loss"])
-            train, = plt.plot(range(len(loss_history)),loss_history,'k--', label='train')
-            val, = plt.plot(range(len(loss_history)),valloss_history,'r--', label='val')
-            plt.legend([train,val], ['Train Loss', 'Validation Loss'])
-            #plt.axis([0,len(loss_history),0,100])
-            plt.savefig('loss_curves/'+sets[dataset]+'-'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+'.png')
-            plt.clf()
+    #set up data loaders
+    train_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(trainx),torch.tensor(trainy)),batch_size=512, shuffle=True, **kwargs)
+    val_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(valx),torch.tensor(valy)),batch_size=512, shuffle=False, **kwargs)
+    test_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(testx),torch.tensor(testy)),batch_size=512, shuffle=False, **kwargs)
+    
+    
+    #initialize best validation loss and time since improvement
+    bestvalloss=np.inf
+    timesinceimprove=0
+    #train model
+    model = model.float()
+    for it in range(maxiters):
+        print('iteration: '+str(it))
+        model.train()
+        for num, (data,target) in enumerate(train_loader):
+            data, target = data.to(device).float(), target.to(device).float()
+            if dataset==1:
+                target=target.squeeze().long()
+            optimizer.zero_grad()
+            output = model.forward(data,dataset,layers)
+            loss = loss_func(output, target)
+            loss.backward()
+            optimizer.step()
             
-        #delete weights 
-    
-            os.remove(weightspath)
-        #get test and validation outputs
-    print('evaluating on test and val data')
-    
-    return model.evaluate(valx,valy),model.evaluate(testx,testy),model.predict(testx)
+        #check validation data
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            for data,target in val_loader:
+                data, target = data.to(device).float(), target.to(device).float()
+                if dataset==1:
+                    target=target.squeeze().long()
+                output = model.forward(data,dataset,layers)
+                val_loss += loss_func(output, target).item()  
 
-
-############# Run a given model and return validation loss 
-#inputs dataset #,data, hyperparamters and:
-#round= which set this is
-#time since the val last improved (integer value)
-#the previous val loss
-def pbt_model_update(dataset,trainx,trainy,valx,valy,testx,testy,opts,round,time_since_val_improve,prev_val_loss)
-    
-    #BUILD MODEL
-    layers=int(opts[0])
-    nodes=int(opts[1])
-    learnrate=opts[2]
-    beta1=opts[3]
-    beta2=opts[4]
-    eps=opts[5]
-    decay=opts[6]
-    
-    #set up optimizer
-    adam=optimizers.AdamW(decay,learning_rate=learnrate,beta_1=beta1,beta_2=beta2,epsilon=eps)
-    
-    #get shape of output data
-    if testy.ndim>1:
-        outputs=testy.shape[1]
-    else:
-        outputs=1
         
-    #build model
-    model = tf.keras.models.Sequential()
-    
-    #input layer
-    if dataset==3 and nodes==532: #brain image data is too big to allocate the memory for this, so use second largest size
-        nodes=264
-    
-    model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-    
-    
-    #additional hiddenlayers
-    for f in range(layers-1):
-        model.add(tf.keras.layers.Dense(nodes, activation='relu',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-    
-    
-    
-    
-    
-    
-    #Figure out which weights we're loading and which we're saving
-    lastweightspath='pbt_weights'+str(path)+'_'+str(time_since_val_improve)+'.hdf5'
-    weightspath='pbt_weights'+str(path)+'_'+str(time_since_val_improve+1)+'.hdf5'
-    
-    
-    
-    
-    
-    #finish building models with stoping points
-    if dataset>1:
-        model.add(tf.keras.layers.Dense(1,bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.load_weights(lastweightspath)
-        model.compile(optimizer=adam, loss='mean_squared_error',  metrics=['mean_squared_error','mean_absolute_error'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
-    elif dataset==1:
-        model.add(tf.keras.layers.Dense(outputs, activation='softmax',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.load_weights(lastweightspath)
-        model.compile(optimizer=adam, loss='categorical_crossentropy',  metrics=['acc'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
+        print(val_loss)
+        
+        if val_loss<bestvalloss:
+            bestvalloss=val_loss
+            timesinceimprove=0
+            torch.save(model,weightspath)
+        else:
+            timesinceimprove+=1
+        if timesinceimprove>pat:
+            break
+
+    if path!=None and not evaluate:
+        return bestvalloss
     else:
-        model.add(tf.keras.layers.Dense(outputs, activation='sigmoid',bias_initializer='glorot_normal',kernel_initializer='glorot_normal'))
-        model.load_weights(lastweightspath)
-        model.compile(optimizer=adam, loss='binary_crossentropy',  metrics=['acc'])
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(weightspath, monitor='val_loss',patience=100, verbose=1, save_best_only=False, mode='min')
+        #evaluate test data
+        testout=[]
+        test_loss=0
+        #load best model
+        model=torch.load(weightspath)
+        with torch.no_grad():
+            for data,target in test_loader:
+                data, target = data.to(device).float(), target.to(device).float()
+                if dataset==1:
+                    target=target.squeeze().long()
+                output = model.forward(data,dataset,layers)
+                test_loss += loss_func(output, target).item()  # sum up batch loss
+                for t in output:
+                    testout.append(t.numpy())
+        return bestvalloss,test_loss,np.asarray(testout)
 
-    callbacks_list = [checkpoint]
-
-    print('fitting model')
-    model.fit(trainx,trainy, epochs=1,validation_data=(valx,valy), callbacks=callbacks_list,batch_size=512)
-    
-    #see if it improved.
-    cur_val=model.evaluate(valx,valy)
-    if cur_val<time_since_val_improve:
-        copyfile('pbt_weights'+str(path)+'_'+str(time_since_val_improve+1)+'.hdf5','pbt_weights'+str(path)+'_'+'_0.hdf5')
-    print('evaluating on test and val data')
-    
-    return cur_val,model.evaluate(testx,testy),model.predict(testx)
 
 
 ##########################################    DATA LOADER Section   ##########################################################
@@ -338,27 +327,16 @@ def loaddata(dataset):
         
         #MNIST is split ~85/15, get remaining 15 (20 of train) of val from train.
         n=y.shape[0]
-        
-        newy=np.zeros((n,10))
-        #onehotify
-        for f in range(10):
-            newy[:,f]=(y==f)
-        y=newy
-        del newy
+
+
         testx=testx.astype(float)
         testy=testy.astype(float)
         
-        newty=np.zeros((testy.shape[0],10))
-        #onehotify
-        for f in range(10):
-            newty[:,f]=(testy==f)
-        testy=newty
-        del newty
-            
+
         trainx=x[0:int(np.floor(n*.8)),:].astype(float)
-        trainy=y[0:int(np.floor(n*.8)),:].astype(float)
+        trainy=y[0:int(np.floor(n*.8))].astype(float)
         valx=x[int(np.floor(n*.8)):-1,:].astype(float)
-        valy=y[int(np.floor(n*.8)):-1,:].astype(float)
+        valy=y[int(np.floor(n*.8)):-1].astype(float)
 
         del x,y
     
@@ -406,7 +384,7 @@ def loaddata(dataset):
         
         del x,y
     
-    return trainx,trainy,valx,valy,testx,testy
+    return trainx,np.expand_dims(trainy,axis=1),valx,np.expand_dims(valy,axis=1),testx,np.expand_dims(testy,axis=1)
 
 
 
@@ -422,10 +400,11 @@ def dehotify(a):
     
 def evaluation_plot(dataset,a,b):
     if dataset==1:
-        a=dehotify(a)
-        b=dehotify(b)
+         b=dehotify(b)
     
     if dataset==0:
+        a=a[:,0]
+        b=b[:]
         plt.plot(a-.25+np.linspace(0,.5,len(a)),b,'o')
         plt.xlabel('Actual Mortality')
         plt.ylabel('Predicted Mortality')
@@ -435,6 +414,7 @@ def evaluation_plot(dataset,a,b):
         
         plt.plot([np.min(a),np.max(a)],[np.min(a),np.max(a)],'m')
     if dataset==1:
+        a=a[:,0]
         plt.plot(a-.25+np.linspace(0,.5,len(a)),b-.25+np.linspace(0,.5,len(a)),'*')
         plt.xlabel('Actual Number (Jittered)')
         plt.ylabel('Predicted Number (Jittered)')
@@ -463,7 +443,7 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
     lowesttest=np.inf
     
     #to look at all
-    all=np.zeros(100)
+    all=np.zeros(grid_iters)
     
     for f in range(grid_iters):
         #do randomization
@@ -491,6 +471,9 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
             
         
     return lowestval,lowesttest,best,all
+
+
+
 
 if __name__== "__main__":
   main()        
