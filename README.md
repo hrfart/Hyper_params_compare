@@ -22,7 +22,7 @@ Four Data sets are used for evaluation
 All code is located in the file model.py. 
 It is set up to loop through every Hyperparameter optimization model and dataset
 and outputs plots showing the data fit for the best hyperparameters found, and loss at each algorithm iteration.
-Also outputted are loss curves for each iteration and algorithm, and the optimal loss and hyperparameters found in a csv file.
+Also outputted are the the optimal loss and hyperparameters found in a csv file.
 
 The model being optimized is a fully connected Neural network implemented in Pytorch with an Adam optimizer.
 Number of layers and nodes are treated as hyperparameters, along with learning rate, weight decay, and adam parameters beta1, beta2, and epsilon.
@@ -56,7 +56,6 @@ Approach to Hyperparameter Optimization. Journal of Machine Learning Research 18
 [3] Jaderberg, M., Dalibard, V., Osindero, S., Mojcich, M.C., Donahue, J., Razavi, A., Vinyals, O., Green,  
 T., Dunning, I, Karen, S., Fernadno, C. & Kavukcuoglu, K. (2017). Population Based Training of Neural Networks. 
 Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining 1791-1799
-
 
 [4] LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998) Gradient-based learning applied to document
 recognition. Proceedings of the IEEE 86:2278–2324.
