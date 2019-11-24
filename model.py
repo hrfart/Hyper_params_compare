@@ -205,9 +205,10 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     
     if load!=None:
         model=torch.load(str(load)+'.pt')
-        
-    #set up optimizer
-    optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
+        #MODIFY OPTIMZER HERE
+    else:
+        #set up optimizer
+        optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
     
     #loss function
     loss_func=torch.nn.MSELoss()
