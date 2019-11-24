@@ -186,6 +186,8 @@ def longCEL(x,y):
 #dataset input is so the correct loss is used.
 #the three optional parameters are for the PBT method only.
 def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, path=None, load=None, evaluate=False):
+    
+    
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]
@@ -201,6 +203,9 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     #set up model
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
     
+    if load!=None:
+        model=torch.load(str(load)+'.pt')
+        
     #set up optimizer
     optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
     
@@ -219,8 +224,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     else:
         path=str(path)+'.pt'
     
-    if load!=None:
-        model=torch.load(str(load)+'.pt')
+
     
     
     #set up data loaders
