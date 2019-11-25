@@ -1,7 +1,7 @@
 import joblib
 import numpy as np
 from mlxtend.data import loadlocal_mnist
-import os, datetime
+import os, datetime,sys
 import matplotlib.pyplot as plt
 import sklearn.metrics
 from shutil import copyfile
@@ -9,17 +9,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from hyperband import *
+from bayesian_opt_utils import *
 
-use_cuda=True
+use_cuda=False
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
 os.environ["CUDA_VISIBLE_DEVICES"]="4"
-# from tensorflow.python.compiler.xla import jit
-# from tensorflow.compat.v1 import ConfigProto
-# from tensorflow.compat.v1 import InteractiveSession
-# config = ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = InteractiveSession(config=config)
+
 
 
 data_dir = 'data_sets'
@@ -29,10 +26,40 @@ output_file = 'results.csv'
 save_loss_curves=False
 
 #0-mimic,1-MNIST,2-housing,3-brains
-dataset=2
+dataset=0
 
 #0-random grid search
+#1-Bayesian
+#2-HYPERBAND
+#3-population based 
 optmethod=0
+
+
+if len(sys.argv)<2:
+    print('Please enter an integer to select the hyperparameter opimizer.')
+    print('0-random grid search')
+    print('1-Bayesian')
+    print('2-HYPERBAND')
+    print('3-population based')
+    quit()
+else:
+    try:
+        optmethod=int(sys.argv[1])
+    except:
+        print('Please enter an integer to select the hyperparameter opimizer.')
+        print('0-random grid search')
+        print('1-Bayesian')
+        print('2-HYPERBAND')
+        print('3-population based')
+        quit()
+    if optmethod<0 or optmethod>3:
+        print('Please enter an integer to select the hyperparameter opimizer.')
+        print('0-random grid search')
+        print('1-Bayesian')
+        print('2-HYPERBAND')
+        print('3-population based')
+        quit()
+
 
 #ranges to search through
 layer_opts=[1,2,3,4,5,6]
@@ -79,7 +106,7 @@ methods = ['random grid', 'Bayes', 'HYPERBAND', 'PBT']
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
 
 def main():
-    for dataset in [2,1,0,3]:
+    for dataset in [2]:#,1,0,3]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
     
@@ -87,6 +114,15 @@ def main():
         #do random grid search
         if optmethod==0:    
             lowestval,lowesttest,best,all=randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy)
+        
+        if optmethod==1:    
+            lowestval,lowesttest,best,all=bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy)
+        
+        if optmethod==2:    
+            lowestval,lowesttest,best,all=hyperband(10,3,dataset,trainx,trainy,valx,valy,testx,testy)
+        
+        if optmethod==3:    
+            lowestval,lowesttest,best,all=randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy)
         
     
     
@@ -184,8 +220,8 @@ def longCEL(x,y):
 #and hyper parameters in opts. Also pass in which optimization method is calling it.
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
-#the four optional parameters are for the PBT method only.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method, run=None, path=None, loadrun=None, load=None, evaluate=False):
+#the last four optional parameters are for the PBT method only.
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, evaluate=False):
     
     
     layers=int(opts[0])

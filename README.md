@@ -19,8 +19,9 @@ Four Data sets are used for evaluation
 4) NKI Brain Data: Predicting age from T1 MRI brain images [6]
 
 
-All code is located in the file model.py. 
-It is set up to loop through every Hyperparameter optimization model and dataset
+model.py contains the bulk of the code including the neural network model and comparison architecture.
+It takes as an argument an integer 1-4 indicating the hyperparamater method to run. 
+It will loop through all 4 datasets.
 and outputs plots showing the data fit for the best hyperparameters found, and loss at each algorithm iteration.
 Also outputted are the the optimal loss and hyperparameters found in a csv file.
 
@@ -41,7 +42,7 @@ mlxtend.data (http://rasbt.github.io/mlxtend/)
 
 joblib (https://joblib.readthedocs.io/en/latest/)
 
-Note: set up to run on a Cuda GPU. If one is unavailable, set use_cuda to false in line 13.
+Note: set up to run on a Cuda GPU. If one is unavailable, set use_cuda to false in line 15.
 
 References:
 
