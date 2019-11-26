@@ -11,8 +11,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from hyperband import *
 from bayesian_opt_utils import *
-from global_utils import *
+from global_utils_cfg import *
 
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="4"
 
 if len(sys.argv)<2:
     print('Please enter an integer to select the hyperparameter opimizer.')

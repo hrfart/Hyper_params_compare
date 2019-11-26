@@ -14,7 +14,7 @@ import numpy as np
 #   finaltest = loss over test set of final configuration (generalization error, which does not control algorithm)
 #   best = best hyperparameter configuration chosen (corresponds to lowestval and finaltest)
 #   all = ....
-from global_utils import *
+from global_utils_cfg import *
 
 def hyperband(R, h, dataset, trainx, trainy, valx, valy, testx, testy):
     # Initialize smax and budget

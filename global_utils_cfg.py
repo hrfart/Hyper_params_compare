@@ -2,10 +2,6 @@
 # e.g. algorithm and hyperparameter search space
 
 use_cuda=False
-
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
-
 data_dir = 'data_sets'
 output_file = 'results.csv'
 
