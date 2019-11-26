@@ -1,4 +1,5 @@
 import joblib
+from pbt import *
 import numpy as np
 from mlxtend.data import loadlocal_mnist
 import os, datetime,sys
@@ -61,7 +62,7 @@ def main():
             lowestval,lowesttest,best,all=hyperband(10,3,dataset,trainx,trainy,valx,valy,testx,testy)
         
         if optmethod==3:    
-            lowestval,lowesttest,best,all=randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy)
+            lowestval,lowesttest,best,all=pbt(dataset,trainx,trainy,valx,valy,testx,testy)
         
     
     
@@ -160,7 +161,7 @@ def longCEL(x,y):
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
 #the last four optional parameters are for the PBT method only.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, evaluate=False):
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, explore = 0, evaluate=False):
     
     
     layers=int(opts[0])
@@ -183,6 +184,28 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
         optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
         optimizer.load_state_dict(torch.load(str(loadrun)+'.'+str(load)+'.opt.pt'))
     
+    newparams = []
+    if explore:
+        plusminus = [-1, 1]
+        for param_group in optimizer.param_groups:
+            lrchange = param_group['lr']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
+            b0change = param_group['betas'][0]*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
+            b1change = param_group['betas'][1]*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
+            epschange = param_group['eps']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
+            wdchange = param_group['weight_decay']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
+
+            lr = min(max(param_group['lr'] + lrchange, 1e-9), 1e-1)
+            b0 = min(max(0.8, param_group['betas'][0] + b0change), 1-1e-2)
+            b1 = min(max(0.8, param_group['betas'][1] + b1change), 1-1e-10)
+            eps = min(max(param_group['eps'] + epschange, 1e-10), 1e-6)
+            wd = abs(param_group['weight_decay'] + wdchange)
+
+            param_group['lr'] = lr
+            param_group['betas'] = (b0, b1)
+            param_group['eps'] = eps
+            param_group['weight_decay'] = wd
+            newparams = [lr, b0, b1, eps, wd]
+
     #loss function
     loss_func=torch.nn.MSELoss()
     if dataset==0:
@@ -259,7 +282,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
             break
 
     if path!=None and not evaluate:
-        return bestvalloss
+        return bestvalloss,newparams
     else:
         #evaluate test data
         testout=[]
