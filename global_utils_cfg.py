@@ -1,5 +1,6 @@
 # File for all global configuration variables
 # e.g. algorithm and hyperparameter search space
+import numpy as np
 
 use_cuda=False
 data_dir = 'data_sets'
