@@ -11,28 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from hyperband import *
 from bayesian_opt_utils import *
-
-use_cuda=False
-
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
-
-
-
-data_dir = 'data_sets'
-output_file = 'results.csv'
-
-
-save_loss_curves=False
-
-#0-mimic,1-MNIST,2-housing,3-brains
-dataset=0
-
-#0-random grid search
-#1-Bayesian
-#2-HYPERBAND
-#3-population based 
-optmethod=0
+from global_utils import *
 
 
 if len(sys.argv)<2:
@@ -59,48 +38,6 @@ else:
         print('2-HYPERBAND')
         print('3-population based')
         quit()
-
-
-#ranges to search through
-layer_opts=[1,2,3,4,5,6]
-node_opts=[32,64,128,256,532]
-learnrate_opts=np.linspace(1e-7,1e-2,100)
-beta1_opts=np.linspace(.85,.95,100)
-beta2_opts=np.linspace(.9,.99999,100)
-eps_opts=np.linspace(1e-9,1e-7,100)
-decay_opts=np.linspace(0,.05,100)
-
-#iterations FOR RANDOM GRIDSEARCH
-grid_iters=200
-
-#for each run of the model
-iterations=300
-pat=15
-
-#datasets
-sets=['mimic','MNIST','housing','NKI']
-methods=['random grid','Bayes','HYPERBAND','PBT']
-
-# ranges to search through
-NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
-layer_opts = [1, 2, 3, 4, 5, 6]
-node_opts = [32, 64, 128, 256, 532]
-learnrate_opts = np.linspace(1e-5, 1e-2, 100)
-beta1_opts = np.linspace(.85, .95, 100)
-beta2_opts = np.linspace(.9, .99999, 100)
-eps_opts = np.linspace(1e-9, 1e-7, 100)
-decay_opts = np.linspace(0, .1, 100)
-
-# iterations for random grid search
-iters = 200
-
-# for each run of the model
-iterations = 300
-pat = 15
-
-# datasets
-sets = ['mimic', 'MNIST', 'housing', 'NKI']
-methods = ['random grid', 'Bayes', 'HYPERBAND', 'PBT']
 
 
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################

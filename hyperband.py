@@ -14,8 +14,7 @@ import numpy as np
 #   finaltest = loss over test set of final configuration (generalization error, which does not control algorithm)
 #   best = best hyperparameter configuration chosen (corresponds to lowestval and finaltest)
 #   all = ....
-from model import *
-
+from global_utils import *
 
 def hyperband(R, h, dataset, trainx, trainy, valx, valy, testx, testy):
     # Initialize smax and budget
@@ -59,28 +58,6 @@ def hyperband(R, h, dataset, trainx, trainy, valx, valy, testx, testy):
     # Now, return the best overall config and associated losses ("best" is based on lowest validation loss)
     best_idx = np.argmin(lowest_val_losses)
     return lowest_val_losses[best_idx], test_losses[best_idx], best_configs[best_idx], lowest_val_losses
-
-
-# Function to return a matrix T of hyperparameter configurations
-# n = number of hyperparameter configurations to return, i.e. cardinality of T, where each element of T
-#   is a different column/hyperparameter configuration
-#
-# NOTE: THIS FUNCTION READS GLOBALS FROM model.py FOR HYPERPARAM CONFIGS
-def get_hyperparameter_configuration(n):
-    # Create matrix/set of hyperparam configurations to investigate
-    T = np.zeros((NUM_HYPERPARAMS, n))
-
-    # Uniformly choose hyperparameters among different ranges
-    for hpidx in range(n):
-        T[0, hpidx] = layer_opts[np.random.randint(0,len(layer_opts))]
-        T[1, hpidx] = node_opts[np.random.randint(0, len(node_opts))]
-        T[2, hpidx] = learnrate_opts[np.random.randint(0, len(learnrate_opts))]
-        T[3, hpidx] = beta1_opts[np.random.randint(0, len(beta1_opts))]
-        T[4, hpidx] = beta2_opts[np.random.randint(0, len(beta2_opts))]
-        T[5, hpidx] = eps_opts[np.random.randint(0, len(eps_opts))]
-        T[6, hpidx] = decay_opts[np.random.randint(0, len(decay_opts))]
-
-    return T
 
 
 # Function to return top k performing hyperparameter configurations in a set, based on loss L
