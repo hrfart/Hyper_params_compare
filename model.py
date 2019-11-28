@@ -10,12 +10,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from hyperband import *
-from bayesian_opt_utils import *
+#from hyperband import *
+#from bayesian_opt_utils import *
 from global_utils_cfg import *
-
+import time
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 if len(sys.argv)<2:
     print('Please enter an integer to select the hyperparameter opimizer.')
@@ -49,8 +49,10 @@ def main():
     for dataset in [2]:#,1,0,3]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
-    
-    
+        
+        #start timers
+        start = time.time()
+        pstart = time.process_time()
         #do random grid search
         if optmethod==0:    
             lowestval,lowesttest,best,all=randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy)
@@ -71,6 +73,7 @@ def main():
         out=sets[dataset]+","+methods[optmethod]+','+str(lowesttest)+','+str(lowestval)
         for f in range(7):
             out=out+','+str(best[f])
+        out=out+','+str(time.time()-start)+','+str(time.process_time()-pstart)
         t=open(output_file,"a+")
         t.write(out+',\n')
         t.close()
