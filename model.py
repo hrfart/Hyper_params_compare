@@ -10,8 +10,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.utils.data
 #from hyperband import *
-#from bayesian_opt_utils import *
+from bayesian_opt_utils import *
 from global_utils_cfg import *
 import time
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
