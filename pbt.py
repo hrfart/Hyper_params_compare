@@ -1,8 +1,9 @@
 from model import *
+import os, shutil
 
 def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
-    num_iters = 300 
+    num_iters = 300
     num_models = 100
     methodnum = 3
     patcheck = 30
@@ -76,7 +77,13 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     lowestval,lowesttest,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,hyps[bestrun],methodnum,bestrun,0,bestrun,0,evaluate=True)
     evaluation_plot(dataset,testy,testeval)
     print(lowestval, lowesttest, best)
-        
+
+    dir_name = "."
+    test = os.listdir(dir_name)
+
+    for item in test:
+        if item.endswith(".pt"):
+            os.remove(os.path.join(dir_name, item))
     return lowestval,lowesttest,best,data
 
 
