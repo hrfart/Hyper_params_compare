@@ -2,7 +2,7 @@ import joblib
 from pbt import *
 import numpy as np
 from mlxtend.data import loadlocal_mnist
-import os, datetime,sys
+import os, datetime,sys, errno
 import matplotlib.pyplot as plt
 import sklearn.metrics
 from shutil import copyfile
@@ -10,12 +10,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-#from hyperband import *
+from hyperband import *
 #from bayesian_opt_utils import *
 from global_utils_cfg import *
 import time
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
+# Create output directory if it doesn't exist
+try:
+    os.mkdir(create_file_path([output_dir]))
+except OSError as exc:
+    if exc.errno != errno.EEXIST:
+        raise
+    pass
 
 if len(sys.argv)<2:
     print('Please enter an integer to select the hyperparameter opimizer.')
@@ -46,7 +54,7 @@ else:
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
 
 def main():
-    for dataset in [2]:#,1,0,3]:
+    for dataset in configured_datasets:#,1,0,3]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
 
@@ -61,7 +69,7 @@ def main():
             lowestval,lowesttest,best,all=bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy)
 
         if optmethod==2:
-            lowestval,lowesttest,best,all=hyperband(10,3,dataset,trainx,trainy,valx,valy,testx,testy)
+            lowestval,lowesttest,best,all=hyperband(iterations,HBAND_H,dataset,trainx,trainy,valx,valy,testx,testy)
 
         if optmethod==3:
             lowestval,lowesttest,best,all=pbt(dataset,trainx,trainy,valx,valy,testx,testy)
@@ -166,7 +174,7 @@ def longCEL(x,y):
 #the last four optional parameters are for the PBT method only.
 def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, explore = 0, evaluate=False):
 
-
+    #print("opts = {}".format(opts))
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]

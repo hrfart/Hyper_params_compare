@@ -12,7 +12,7 @@ output_file = 'results.csv'
 save_loss_curves=False
 
 #0-mimic,1-MNIST,2-housing,3-brains
-dataset=0
+configured_datasets=[2] # list of datasets to run
 
 # ranges to search through
 NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
@@ -27,6 +27,9 @@ decay_opts = np.linspace(0, .1, 100)
 #iterations FOR RANDOM GRIDSEARCH
 grid_iters=200
 
+# HYPERBAND successive "halving" factor
+HBAND_H = 3
+
 #for each run of the model
 iterations=300
 pat=15
@@ -40,7 +43,7 @@ methods=['random grid','Bayes','HYPERBAND','PBT']
 def create_file_path(path_string_list, relative=True):
     if relative:
         s = [os.path.dirname(__file__)]
-        s = s + path_string_list # Append to list
+        s = s + path_string_list # Append
         return os.path.join(*s)
     else:
         s = path_string_list
