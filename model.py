@@ -49,26 +49,26 @@ def main():
     for dataset in [2]:#,1,0,3]:
         #load data
         trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
-        
+
         #start timers
         start = time.time()
         pstart = time.process_time()
         #do random grid search
-        if optmethod==0:    
+        if optmethod==0:
             lowestval,lowesttest,best,all=randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy)
-        
-        if optmethod==1:    
+
+        if optmethod==1:
             lowestval,lowesttest,best,all=bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy)
-        
-        if optmethod==2:    
+
+        if optmethod==2:
             lowestval,lowesttest,best,all=hyperband(10,3,dataset,trainx,trainy,valx,valy,testx,testy)
-        
-        if optmethod==3:    
+
+        if optmethod==3:
             lowestval,lowesttest,best,all=pbt(dataset,trainx,trainy,valx,valy,testx,testy)
-        
-    
-    
-    
+
+
+
+
         #write outputs
         out=sets[dataset]+","+methods[optmethod]+','+str(lowesttest)+','+str(lowestval)
         for f in range(7):
@@ -77,17 +77,17 @@ def main():
         t=open(output_file,"a+")
         t.write(out+',\n')
         t.close()
-    
+
         #plot all iterations validation
         plt.plot(np.arange(len(all)),all)
         plt.xlabel('algorithm iteration')
         plt.ylabel('loss')
         plt.title(sets[dataset]+' '+methods[optmethod])
-        plt.savefig(sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".png")
+        plt.savefig(create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".png"]))
         plt.clf()
-    
+
         #probably also a good idea to save the data so we can make more involved plots later.
-        joblib.dump(all,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl")
+        joblib.dump(all,create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl"]))
 
 
 ##########################################    BASE MODEL SECTION   ##########################################################
@@ -111,7 +111,7 @@ class Net(nn.Module):
              self.outfc=nn.Linear(numnodes,10)
         else:
             self.outfc=nn.Linear(numnodes,1)
-         
+
     def forward(self, x,dataset,numlayers):
         x = self.fc1(x)
         x = F.relu(x)
@@ -139,34 +139,34 @@ class Net(nn.Module):
 
 
 
-#data set class  
+#data set class
 class torch_dataset(torch.utils.data.Dataset):
     def __init__(self,datax,datay):
         self.x=datax
         self.y=datay
-        
+
     def __len__(self):
         return len(self.y)
-        
+
     def __getitem__(self,idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         return self.x[idx,:],self.y[idx]
-        
-        
+
+
 def longCEL(x,y):
-    return torch.nn.CrossEntropyLoss(x,y)     
-    
-    
-      
+    return torch.nn.CrossEntropyLoss(x,y)
+
+
+
 #builds a model with data trainx,trainy,valx,valy,testx,testy,      limits iters and max iters,
 #and hyper parameters in opts. Also pass in which optimization method is calling it.
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
 #the last four optional parameters are for the PBT method only.
 def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, explore = 0, evaluate=False):
-    
-    
+
+
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]
@@ -174,19 +174,19 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     beta2=opts[4]
     eps=opts[5]
     decay=opts[6]
-    
-    
+
+
     device = torch.device("cuda" if use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-    
+
     #set up model
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
+    optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
     if load!=None:
         model=torch.load(str(loadrun)+'.'+str(load)+'.pt')
-        optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False) 
+        optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
         optimizer.load_state_dict(torch.load(str(loadrun)+'.'+str(load)+'.opt.pt'))
-    
+
     newparams = []
     if explore:
         plusminus = [-1, 1]
@@ -215,24 +215,24 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
         loss_func=torch.nn.BCELoss()
     if dataset==1:
         loss_func= F.nll_loss
-    
-    
-    
+
+
+
     #set up weightspath
     if path==None:
-        weightspath=methods[method]+'.'+sets[dataset]+'.pt'
+        weightspath=create_file_path([output_dir,methods[method]+'.'+sets[dataset]+'.pt'])
     else:
-        weightspath=str(run)+'.'+str(path)+'.pt'
-    
+        weightspath=create_file_path([str(run)+'.'+str(path)+'.pt'], False)
 
-    
-    
+
+
+
     #set up data loaders
     train_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(trainx),torch.tensor(trainy)),batch_size=512, shuffle=True, **kwargs)
     val_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(valx),torch.tensor(valy)),batch_size=512, shuffle=False, **kwargs)
     test_loader=torch.utils.data.DataLoader(torch_dataset(torch.tensor(testx),torch.tensor(testy)),batch_size=512, shuffle=False, **kwargs)
-    
-    
+
+
     #initialize best validation loss and time since improvement
     bestvalloss=np.inf
     timesinceimprove=0
@@ -250,7 +250,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
             loss = loss_func(output, target)
             loss.backward()
             optimizer.step()
-            
+
         #check validation data
         model.eval()
         val_loss = 0
@@ -260,20 +260,20 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                 if dataset==1:
                     target=target.squeeze().long()
                 output = model.forward(data,dataset,layers)
-                val_loss += loss_func(output, target).item()  
+                val_loss += loss_func(output, target).item()
 
         if dataset<2:
             val_loss /= len(val_loader)
         print(val_loss)
-        
-        
-        
+
+
+
         if path!=None:
             torch.save(model,weightspath)
-            torch.save(optimizer.state_dict(),str(run)+'.'+str(path)+'.opt.pt')
-        
-        
-        
+            torch.save(optimizer.state_dict(),create_file_path([str(run)+'.'+str(path)+'.opt.pt'], False))
+
+
+
         if val_loss<bestvalloss:
             bestvalloss=val_loss
             timesinceimprove=0
@@ -315,7 +315,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
 # Accepts dataset as input: 0 is mimic, 2 is MNIST, 3 housing, 4 is brains
 # outputs data in order trainx,trainy,valx,valy,testx,testy.
 def loaddata(dataset):
-    #load Mimic. 
+    #load Mimic.
     #Mimic is already split 70,15,15
     if dataset==0:
         a=joblib.load(data_dir+'/'+'mimic_train.pkl')
@@ -332,24 +332,24 @@ def loaddata(dataset):
         testx=np.reshape(testx,[testx.shape[0],-1])
 
         del a
-    
 
-  
-  
-    
-        
+
+
+
+
+
     #load MNIST.
     if dataset==1:
         x, y = loadlocal_mnist(images_path=data_dir+'/train-images-idx3-ubyte', labels_path=data_dir+'/train-labels-idx1-ubyte')
         testx, testy = loadlocal_mnist(images_path=data_dir+'/t10k-images-idx3-ubyte', labels_path=data_dir+'/t10k-labels-idx1-ubyte')
-        
+
         #MNIST is split ~85/15, get remaining 15 (20 of train) of val from train.
         n=y.shape[0]
 
 
         testx=testx.astype(float)
         testy=testy.astype(float)
-        
+
 
         trainx=x[0:int(np.floor(n*.8)),:].astype(float)
         trainy=y[0:int(np.floor(n*.8))].astype(float)
@@ -357,21 +357,21 @@ def loaddata(dataset):
         valy=y[int(np.floor(n*.8)):-1].astype(float)
 
         del x,y
-    
-    
-        
+
+
+
     #NOTE: Will do 70,15,15 split for housing and brains
-    
-    
-    
+
+
+
     #load housing
     if dataset==2:
         data=np.genfromtxt(data_dir+'/boston-corrected',delimiter=',')
-    
+
         #split into x and y
         y=data[1:,0]
         x=data[1:,1:]
-        
+
         #split into train and test and val
         n=y.shape[0]
         trainx=x[0:int(np.floor(n*.7)),:]
@@ -380,11 +380,11 @@ def loaddata(dataset):
         valy=y[int(np.floor(n*.7)):int(np.floor(n*.85))]
         testx=x[int(np.floor(n*.85)):-1,:]
         testy=y[int(np.floor(n*.85)):-1]
-        
-        del data,x,y 
-    
-    
-    
+
+        del data,x,y
+
+
+
     #load brains
     if dataset==3:
         x=joblib.load(data_dir+'/nki_warped_pooled.pkl')
@@ -399,9 +399,9 @@ def loaddata(dataset):
         valy=y[int(np.floor(n*.7)):int(np.floor(n*.85))]
         testx=x[int(np.floor(n*.85)):-1,:]
         testy=y[int(np.floor(n*.85)):-1]
-        
+
         del x,y
-    
+
     return trainx,np.expand_dims(trainy,axis=1),valx,np.expand_dims(valy,axis=1),testx,np.expand_dims(testy,axis=1)
 
 
@@ -415,11 +415,11 @@ def dehotify(a):
     for f in range(a.shape[0]):
         out[f]=np.argmax(a[f,:])
     return out
-    
+
 def evaluation_plot(dataset,a,b):
     if dataset==1:
          b=dehotify(b)
-    
+
     if dataset==0:
         a=a[:,0]
         b=b[:]
@@ -429,7 +429,7 @@ def evaluation_plot(dataset,a,b):
         plt.title('Accuracy= '+str(sklearn.metrics.accuracy_score(a,np.round(b)))+', AUROC= '+str(sklearn.metrics.roc_auc_score(a,np.round(b))))
         print(str(sklearn.metrics.roc_auc_score(a,np.round(b))))
     else:
-        
+
         plt.plot([np.min(a),np.max(a)],[np.min(a),np.max(a)],'m')
     if dataset==1:
         a=a[:,0]
@@ -445,7 +445,7 @@ def evaluation_plot(dataset,a,b):
         plt.plot(a,b,'o')
         plt.xlabel('Actual Age (Months)')
         plt.ylabel('Predicted Age (Months)')
-    plt.savefig('randomgrid-'+sets[dataset]+'.png')
+    plt.savefig(create_file_path([output_dir,'randomgrid-'+sets[dataset]+'.png']))
     plt.clf()
 
 
@@ -454,16 +454,16 @@ def evaluation_plot(dataset,a,b):
 #inputs are data set to use, and the loaded data
 #outputs final val and test loss,best parameters chosen
 def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
-    
+
     #initialize best and current params
     best=np.zeros(7)
     current=np.zeros(7)
     lowestval=np.inf
     lowesttest=np.inf
-    
+
     #to look at all
     all=np.zeros(grid_iters)
-    
+
     for f in range(grid_iters):
         #do randomization
         current[0]=layer_opts[np.random.randint(0,6)]
@@ -473,13 +473,13 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
         current[4]=beta2_opts[np.random.randint(0,100)]
         current[5]=eps_opts[np.random.randint(0,100)]
         current[6]=decay_opts[np.random.randint(0,100)]
-        
+
         #calculate loss
         loss, test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,current,0)
         all[f]=loss
-        
-        
-        
+
+
+
         #if this is the best so far save parameters
         if(loss<lowestval):
             lowestval=loss
@@ -487,24 +487,24 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
             best=np.copy(current)
             #plot best test results
             evaluation_plot(dataset,testy,testeval)
-            
-        
+
+
     return lowestval,lowesttest,best,all
 
 
 
 ##PBT example model running
 def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
-    
+
     #initialize best and current params
     best=np.zeros(7)
     current=np.zeros(7)
     lowestval=np.inf
     lowesttest=np.inf
-    
+
     #to look at all
     all=np.zeros(grid_iters)
-    
+
     for f in range(grid_iters):
         #do randomization
         current[0]=layer_opts[np.random.randint(0,6)]
@@ -514,10 +514,10 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
         current[4]=beta2_opts[np.random.randint(0,100)]
         current[5]=eps_opts[np.random.randint(0,100)]
         current[6]=decay_opts[np.random.randint(0,100)]
-        
-        
-        
-        #set up 
+
+
+
+        #set up
         run=0 #which run out of 10 it is.
         run_to_load=0
         loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0)
@@ -534,14 +534,14 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
                 timesinceimprove+=1
             if timesinceimprove>pat:
                 break
-        
+
         #do evaluation
         loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,run_to_load,0,evaluate=True)
-        
+
         all[f]=loss
-        
-        
-        
+
+
+
         #if this is the best so far save parameters
         if(loss<lowestval):
             lowestval=loss
@@ -549,8 +549,8 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
             best=np.copy(current)
             #plot best test results
             evaluation_plot(dataset,testy,testeval)
-            
-        
+
+
     return lowestval,lowesttest,best,all
 
 
@@ -558,4 +558,4 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
 
 
 if __name__== "__main__":
-  main()        
+  main()

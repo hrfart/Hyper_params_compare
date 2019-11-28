@@ -1,9 +1,12 @@
 # File for all global configuration variables
 # e.g. algorithm and hyperparameter search space
 import numpy as np
+import os
+
 
 use_cuda=False
 data_dir = 'data_sets'
+output_dir = 'output'
 output_file = 'results.csv'
 
 save_loss_curves=False
@@ -32,6 +35,16 @@ pat=15
 sets=['mimic','MNIST','housing','NKI']
 methods=['random grid','Bayes','HYPERBAND','PBT']
 
+# Function which takes strings as a list and combines them into a filepath
+# Default behavior is to create path relative to current directory
+def create_file_path(path_string_list, relative=True):
+    if relative:
+        s = [os.path.dirname(__file__)]
+        s = s + path_string_list # Append to list
+        return os.path.join(*s)
+    else:
+        s = path_string_list
+        return os.path.join(*s)
 
 # Function to return a matrix T of hyperparameter configurations
 # n = number of hyperparameter configurations to return, i.e. cardinality of T, where each element of T
