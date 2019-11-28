@@ -42,7 +42,7 @@ mlxtend.data (http://rasbt.github.io/mlxtend/)
 
 joblib (https://joblib.readthedocs.io/en/latest/)
 
-Note: set up to run on a Cuda GPU. If one is unavailable, set use_cuda to false in line 15.
+Note: Currently set up to run on CPU. To use a CUDA GPU,, set use_cuda to false in global_utils_cfg.py.
 
 References:
 
