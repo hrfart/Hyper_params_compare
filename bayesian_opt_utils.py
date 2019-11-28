@@ -1,56 +1,40 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 22 17:58:58 2019
+Created on Wed Nov 27 17:57:42 2019
 
 @author: hmnor
 """
 
 # -*- coding: utf-8 -*-
 """
-Created on Sun Nov 17 21:13:44 2019
-
+Created on Fri Nov 22 17:58:58 2019
 @author: hmnor
-
-https://machinelearningmastery.com/what-is-bayesian-optimization/
-
-
 """
-	
-# example of bayesian optimization for a 1d function from scratch
-#from math import sin
-#from math import pi
-#from numpy import arange
-#from numpy import vstack
-#from numpy import argmax
-from numpy import argmin
-#from numpy import asarray
-#from numpy.random import normal
-#from numpy.random import random
-from scipy.stats import norm
-#from sklearn.gaussian_process import GaussianProcessRegressor
-from warnings import catch_warnings
-from warnings import simplefilter
-#from matplotlib import pyplot
-#import numpy.matlib
 
-from sklearn.gaussian_process import GaussianProcessRegressor
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Nov 17 21:13:44 2019
+@author: hmnor
+https://machinelearningmastery.com/what-is-bayesian-optimization/
+"""
 
-from model import runmodel
+import model as mod
+from global_utils_cfg import *
 
 import numpy as np
+from numpy import argmin
+from scipy.stats import norm
+from warnings import catch_warnings
+from warnings import simplefilter
+from sklearn.gaussian_process import GaussianProcessRegressor
 
-#TODO: update to support harry's design
-from config import *
 
- 
 
 """ Surrogate or approximation for the objective function
 ESTIMATES COSE OF ONE OR MORE SAMPLES 
-
 #will need to rewrite this to return prediction from GP model???
 #think about architecture 
 # """
-#TODO: update with from scratch GP model
 def surrogate(model, X):
     
     #Inputs:
@@ -66,14 +50,16 @@ def surrogate(model, X):
         simplefilter("ignore")
         pred = model.predict(X, return_std=True)
         
-        return pred #model.predict(X, return_std=True)
+        return pred 
  
     
 # probability of improvement acquisition function
 def acquisition(X, Xsamples, model):
+    
 	# calculate the best surrogate score found so far
     yhat, _ = surrogate(model, X)
-    best = max(yhat)
+
+    best = min(yhat)     #best = max(yhat)
 	# calculate mean and stdev via surrogate function
     mu, std = surrogate(model, Xsamples)
     mu = mu[:, 0]
@@ -82,17 +68,16 @@ def acquisition(X, Xsamples, model):
     """ Can update this to expected improvement - more commonly used """ 
     #TODO: update to be Expected Improvement instead of Probability of Improvement
     probs = norm.cdf((mu - best) / (std+1E-9))
+    
+    
     return probs
  
 # optimize the acquisition function
 def opt_acquisition(X, y, model):
-	# random search, generate random samples
-    #Xsamples = random(100)
-    #Xsamples = Xsamples.reshape(len(Xsamples), 1)
-    #Xsamples = np.matlib.repmat(Xsamples, 1, 7)
-
+    
+    # random search, generate random samples
     Xsamples = get_hyperparameter_configuration(100)
-    Xsamples = Xsamples.reshape(100, NUM_HYPERPARAMS)
+    Xsamples = np.transpose(Xsamples) 
     
 	# calculate the acquisition function for each sample
     scores = acquisition(X, Xsamples, model)
@@ -106,32 +91,6 @@ def opt_acquisition(X, y, model):
     
     return newX
  
-    
-
-""" STOLEN FROM CONRAD - hyperband.py """ 
-# Function to return a matrix T of hyperparameter configurations
-# n = number of hyperparameter configurations to return, i.e. cardinality of T, where each element of T
-#   is a different column/hyperparameter configuration
-#
-# NOTE: THIS FUNCTION READS GLOBALS FROM model.py FOR HYPERPARAM CONFIGS
-def get_hyperparameter_configuration(n):
-    # Create matrix/set of hyperparam configurations to investigate
-    T = np.zeros((NUM_HYPERPARAMS, n)) 
-
-    # Uniformly choose hyperparameters among different ranges
-    for hpidx in range(n):
-        T[0, hpidx] = layer_opts[np.random.randint(0,len(layer_opts))]
-        T[1, hpidx] = node_opts[np.random.randint(0, len(node_opts))]
-        T[2, hpidx] = learnrate_opts[np.random.randint(0, len(learnrate_opts))]
-        T[3, hpidx] = beta1_opts[np.random.randint(0, len(beta1_opts))]
-        T[4, hpidx] = beta2_opts[np.random.randint(0, len(beta2_opts))]
-        T[5, hpidx] = eps_opts[np.random.randint(0, len(eps_opts))]
-        T[6, hpidx] = decay_opts[np.random.randint(0, len(decay_opts))]
-        
-
-    return T
-
-
 ###########################  BAYESIAN OPTIMIZATION SECTION   ######################################################
 #inputs are data set to use, and the loaded data
 #outputs final val and test loss,best parameters chosen
@@ -147,8 +106,10 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
     initial_hyper_vals[5]= 10**-7 #eps_opts[np.random.randint(0,100)]
     initial_hyper_vals[6]= 0 #decay_opts[np.random.randint(0,100)]
     
-    loss, _=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,initial_hyper_vals)
-    
+    loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,initial_hyper_vals)
+    #loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,initial_hyper_vals)
+    loss = np.array(loss)
+
     #Initial Values
     X = initial_hyper_vals
     y = loss 
@@ -157,28 +118,45 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
     X = X.reshape(1, len(X))
     y = y.reshape(1, 1)
     
+    #Generate More Training Examples 
+    for r in range(0, 1):
+        
+        Xt = get_hyperparameter_configuration(1)
+        
+        #print(np.shape(Xt[:, 0]))
+        loss, b, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,Xt[:, 0])
+        
+        
+        Xt_r = np.reshape(Xt, (1, NUM_HYPERPARAMS)) #reshape 
+        X = np.vstack((X, Xt_r)) #hyperparameter values 
+        y = np.vstack((y, [[loss]])) #loss values
+        
+        
+        
     #initial fit of the model 
     model = GaussianProcessRegressor()
     model.fit(X, y)
     
     #Tracking Progress variables
-    best=np.zeros(7) #best - best hyperparameters
-    current=np.zeros(7) #all - validation loss at each iteration
+    best=np.zeros(NUM_HYPERPARAMS) #best - best hyperparameters
+    current=np.zeros(NUM_HYPERPARAMS) #all - validation loss at each iteration
+    #best = initial_hyper_vals 
+    #current = initial_hyper_vals
+
     lowestval=9999 #lowestval - lowest validation loss 
     lowesttest=9999 #lowesttest - lowest test loss
     
     #to look at all
     all=np.zeros(100)
 
-    #for f in range(iters):
     for f in range(100):
         
         #Select next hyperparameter values 
         current = opt_acquisition(X, y, model)
+        curr = np.reshape(current, NUM_HYPERPARAMS, 1)
         
         #calculate loss
-        curr = np.reshape(current, NUM_HYPERPARAMS, 1)
-        loss, test =runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,curr)
+        loss, test, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,curr)
         
         """ Update surrogate """
         # add the data to the dataset
@@ -193,12 +171,6 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
         if(loss<lowestval):
             lowestval=loss 
             lowesttest=test
-            best=np.copy(current)
+            best=np.copy(curr)
         
     return lowestval,lowesttest,best,all
-
-
-
-
-
-
