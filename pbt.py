@@ -3,9 +3,9 @@ from model import *
 def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
     num_iters = 300 
-    num_models = 50
+    num_models = 100
     methodnum = 3
-    patcheck = 15
+    patcheck = 30
     
     data = np.zeros((num_models, num_iters))
     timesinceimproves = np.zeros(num_models)
@@ -60,6 +60,7 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
             # sufficient improvement
             if i > 0 and i % patcheck == 0:
                 if run != np.argmin(bestlosses):
+                    patcheck = patcheck+30
                     # exploit
                     bestrun = np.argmin(bestlosses)
                     hyps[run] = hyps[bestrun]

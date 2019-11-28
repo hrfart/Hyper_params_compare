@@ -206,11 +206,14 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
             epschange = param_group['eps']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
             wdchange = param_group['weight_decay']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
 
-            lr = min(max(param_group['lr'] + lrchange, 1e-9), 1e-1)
-            b0 = min(max(0.8, param_group['betas'][0] + b0change), 1-1e-2)
-            b1 = min(max(0.8, param_group['betas'][1] + b1change), 1-1e-10)
-            eps = min(max(param_group['eps'] + epschange, 1e-10), 1e-6)
-            wd = abs(param_group['weight_decay'] + wdchange)
+
+            lr = min(max(param_group['lr'] + lrchange, 1e-7), 1e-2)
+            bparam1 = min(max(0.85, param_group['betas'][0] + b0change), 0.95)
+            bparam2 = min(max(0.9, param_group['betas'][1] + b1change), 0.99999)
+            b0 = min(bparam1, bparam2)
+            b1 = max(bparam1, bparam2)
+            eps = min(max(param_group['eps'] + epschange, 1e-9), 1e-7)
+            wd = min(max(param_group['weight_decay'] + wdchange, 0), 0.1)
 
             param_group['lr'] = lr
             param_group['betas'] = (b0, b1)

@@ -12,7 +12,7 @@ output_file = 'results.csv'
 save_loss_curves=False
 
 #0-mimic,1-MNIST,2-housing,3-brains
-configured_datasets=[2] # list of datasets to run
+configured_datasets=[1, 2, 3] # list of datasets to run
 
 # ranges to search through
 NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
