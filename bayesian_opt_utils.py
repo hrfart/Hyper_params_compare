@@ -1,18 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 27 17:57:42 2019
-
-@author: hmnor
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 22 17:58:58 2019
-@author: hmnor
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Sun Nov 17 21:13:44 2019
 @author: hmnor
 https://machinelearningmastery.com/what-is-bayesian-optimization/
@@ -31,9 +18,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 
 
 """ Surrogate or approximation for the objective function
-ESTIMATES COSE OF ONE OR MORE SAMPLES 
-#will need to rewrite this to return prediction from GP model???
-#think about architecture 
+ESTIMATES COST OF ONE OR MORE SAMPLES 
 # """
 def surrogate(model, X):
     
@@ -65,8 +50,6 @@ def acquisition(X, Xsamples, model):
     mu = mu[:, 0]
     
 	# calculate the probability of improvement
-    """ Can update this to expected improvement - more commonly used """ 
-    #TODO: update to be Expected Improvement instead of Probability of Improvement
     probs = norm.cdf((mu - best) / (std+1E-9))
     
     
@@ -107,7 +90,6 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
     initial_hyper_vals[6]= 0 #decay_opts[np.random.randint(0,100)]
     
     loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,initial_hyper_vals)
-    #loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,initial_hyper_vals)
     loss = np.array(loss)
 
     #Initial Values
