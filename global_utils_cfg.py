@@ -12,7 +12,7 @@ output_file = 'results.csv'
 save_loss_curves=False
 
 #0-mimic,1-MNIST,2-housing,3-brains
-configured_datasets=[0, 1, 2, 3] # list of datasets to run
+configured_datasets=[2] # list of datasets to run
 
 # ranges to search through
 NUM_HYPERPARAMS = 7 # Number of different ranges to investigate
@@ -25,13 +25,13 @@ eps_opts = np.linspace(1e-9, 1e-7, 100)
 decay_opts = np.linspace(0, .1, 100)
 
 #iterations FOR RANDOM GRIDSEARCH
-grid_iters=200
+grid_iters=33
 
 # HYPERBAND successive "halving" factor
 HBAND_H = 3
 
 #for each run of the model
-iterations=300
+iterations=244
 pat=15
 
 #datasets

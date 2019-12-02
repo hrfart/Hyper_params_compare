@@ -31,7 +31,7 @@ def hyperband(R, h, dataset, trainx, trainy, valx, valy, testx, testy):
     # For each bracket, run successive halving
     for s in np.arange(smax, -1, -1):
         # n is the number of configurations to run successive halving over
-        n = np.ceil((B * h**s) / (R * (s + 1)))
+        n = np.floor((smax + 1)/(s + 1)) * h**s
         # r is the minimum resource allocated to all configurations
         r = R * h**(-s)
 
