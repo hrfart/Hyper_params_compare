@@ -4,7 +4,7 @@ import os, shutil
 def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
     num_iters = 300
-    num_models = 100
+    num_models = 25
     methodnum = 3
     patcheck = 30
     
@@ -19,6 +19,8 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     perfs = [ [] for i in range(num_models)]
     for i in range(num_iters):
         for j in range(num_models):
+            if min(timesinceimproves) > 10:
+                break
             print('iter', i, '| model number ', j)
             run=j #which run out of 10 it is.
             run_to_load=j
@@ -44,7 +46,6 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
                     hyps[run] = [hyps[run][0], hyps[run][1]]
                     hyps[run].extend(newparams)
                 toexplores[run] = 0
-                 
             perfs[run].append(loss)
             # print(perfs[run])
             if loss < bestlosses[run]:
@@ -55,8 +56,6 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
                     timesinceimproves[run] = 1
             else:
                 timesinceimproves[run]+=1
-            if sum(timesinceimproves)>pat*len(timesinceimproves):
-                break
  
             # sufficient improvement
             if i > 0 and i % patcheck == 0:
