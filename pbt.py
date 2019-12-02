@@ -1,11 +1,12 @@
 from model import *
+import os, shutil
 
 def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
-    num_iters = 300 
-    num_models = 50
+    num_iters = 300
+    num_models = 25
     methodnum = 3
-    patcheck = 15
+    patcheck = 30
     
     data = np.zeros((num_models, num_iters))
     timesinceimproves = np.zeros(num_models)
@@ -18,6 +19,8 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     perfs = [ [] for i in range(num_models)]
     for i in range(num_iters):
         for j in range(num_models):
+            if min(timesinceimproves) > 10:
+                break
             print('iter', i, '| model number ', j)
             run=j #which run out of 10 it is.
             run_to_load=j
@@ -43,7 +46,6 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
                     hyps[run] = [hyps[run][0], hyps[run][1]]
                     hyps[run].extend(newparams)
                 toexplores[run] = 0
-                 
             perfs[run].append(loss)
             # print(perfs[run])
             if loss < bestlosses[run]:
@@ -54,12 +56,11 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
                     timesinceimproves[run] = 1
             else:
                 timesinceimproves[run]+=1
-            if sum(timesinceimproves)>pat*len(timesinceimproves):
-                break
  
             # sufficient improvement
             if i > 0 and i % patcheck == 0:
                 if run != np.argmin(bestlosses):
+                    patcheck = patcheck+30
                     # exploit
                     bestrun = np.argmin(bestlosses)
                     hyps[run] = hyps[bestrun]
@@ -75,7 +76,13 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     lowestval,lowesttest,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,hyps[bestrun],methodnum,bestrun,0,bestrun,0,evaluate=True)
     evaluation_plot(dataset,testy,testeval)
     print(lowestval, lowesttest, best)
-        
+
+    dir_name = "."
+    test = os.listdir(dir_name)
+
+    for item in test:
+        if item.endswith(".pt"):
+            os.remove(os.path.join(dir_name, item))
     return lowestval,lowesttest,best,data
 
 
