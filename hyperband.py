@@ -76,3 +76,36 @@ def top_k_configurations(T, ValLoss, TestLoss, k):
     val_loss_topk = ValLoss[:, topk_idx]
     test_loss_topk = TestLoss[:, topk_idx]
     return T_topk, val_loss_topk, test_loss_topk
+
+
+# Auxiliary function to print out the Hyperband brackets to be used for a given R and h
+def hyperband_brackets(R, h):
+
+    running_total_GD_iterations = 0
+    running_total_num_cfgs = 0
+
+    # Initialize smax and budget
+    smax = np.floor(np.log(R) / np.log(h))
+    B = (smax + 1) * R
+    print("smax={}, B={}".format(smax, B))
+
+    # For each bracket, run successive halving
+    for s in np.arange(smax, -1, -1):
+        # n is the number of configurations to run successive halving over
+        n = np.floor((smax + 1)/(s+1)) * h**s
+        # r is the minimum resource allocated to all configurations
+        r = R * h**(-s)
+        print("NEW BRACKET: s = {}, n = {}, r = {}".format(int(s), int(n), int(r)))
+
+        running_total_num_cfgs += int(n)
+
+        for i in np.arange(0, s+1):
+            ni = np.floor(n * h**(-i))
+            ri = r * h**i
+            print("inner loop ni = {}, ri = {}".format(int(ni), int(ri)))
+            running_total_GD_iterations += int(ni * ri)
+
+    print("Total GD iterations = {}".format(running_total_GD_iterations))
+    print("Total number of configurations explored = {}".format(running_total_num_cfgs))
+
+    return True
