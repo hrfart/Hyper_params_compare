@@ -4,7 +4,7 @@ import os, shutil
 def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
     num_iters = 300
-    num_models = 25
+    num_models = 70
     methodnum = 3
     patcheck = 30
     
@@ -17,7 +17,7 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
 
     hyps = []
     perfs = [ [] for i in range(num_models)]
-    for i in range(num_iters):
+    for i in range(num_iters/30):
         for j in range(num_models):
             if min(timesinceimproves) > 10:
                 break
@@ -35,12 +35,12 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
                 current[5]=eps_opts[np.random.randint(0,100)]
                 current[6]=decay_opts[np.random.randint(0,100)]
                 hyps.append(current)
-                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,methodnum,run,timesinceimproves[run])
+                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,30,pat,current,methodnum,run,timesinceimproves[run])
                 data[j, i] = loss
                 timesinceimproves[run] += 1
             else:
                 print(hyps[run])
-                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,hyps[run],methodnum,run,timesinceimproves[run],run_to_load,timesinceimproves[run]-1, toexplores[run])
+                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,30,pat,hyps[run],methodnum,run,1,run_to_load,np.min([timesinceimproves[run]-1,1]), toexplores[run])
                 data[j, i] = loss
                 if len(newparams) > 0:
                     hyps[run] = [hyps[run][0], hyps[run][1]]
@@ -51,24 +51,22 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
             if loss < bestlosses[run]:
                 bestlosses[run] = loss
                 if i > 0:
-                    copyfile(str(run)+'.'+str(timesinceimproves[run])+'.opt.pt',str(run)+'.'+'0.opt.pt')
-                    copyfile(str(run)+'.'+str(timesinceimproves[run])+'.pt',str(run)+'.'+'0.pt')
+                    copyfile(str(run)+'.'+str(1)+'.opt.pt',str(run)+'.'+'0.opt.pt')
+                    copyfile(str(run)+'.'+str(1)+'.pt',str(run)+'.'+'0.pt')
                     timesinceimproves[run] = 1
             else:
                 timesinceimproves[run]+=1
  
             # sufficient improvement
-            if i > 0 and i % patcheck == 0:
-                if run != np.argmin(bestlosses):
-                    patcheck = patcheck+30
-                    # exploit
-                    bestrun = np.argmin(bestlosses)
-                    hyps[run] = hyps[bestrun]
-                    copyfile(str(bestrun)+'.'+'0.opt.pt',str(run)+'.'+'0.opt.pt')
-                    copyfile(str(bestrun)+'.'+'0.pt',str(run)+'.'+'0.pt')
-                    timesinceimproves[run]=1
-                    # explore
-                    toexplores[run] = 1
+            if run != np.argmin(bestlosses):
+                # exploit
+                bestrun = np.argmin(bestlosses)
+                hyps[run] = hyps[bestrun]
+                copyfile(str(bestrun)+'.'+'0.opt.pt',str(run)+'.'+'0.opt.pt')
+                copyfile(str(bestrun)+'.'+'0.pt',str(run)+'.'+'0.pt')
+                timesinceimproves[run]=1
+                # explore
+                toexplores[run] = 1
 
     #do evaluation
     bestrun = np.argmin(bestlosses)
