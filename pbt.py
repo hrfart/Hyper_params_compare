@@ -17,7 +17,7 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
 
     hyps = []
     perfs = [ [] for i in range(num_models)]
-    for i in range(num_iters/30):
+    for i in range(10):
         for j in range(num_models):
             if min(timesinceimproves) > 10:
                 break
