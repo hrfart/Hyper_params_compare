@@ -34,12 +34,12 @@ def pbt(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,te
                 current[5]=eps_opts[np.random.randint(0,100)]
                 current[6]=decay_opts[np.random.randint(0,100)]
                 hyps.append(current)
-                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,methodnum,run,timesinceimproves[run])
+                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,30,pat,current,methodnum,run,timesinceimproves[run])
                 data[j, i] = loss
                 timesinceimproves[run] += 1
             else:
                 print(hyps[run])
-                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,hyps[run],methodnum,run,timesinceimproves[run],run_to_load,timesinceimproves[run]-1, toexplores[run])
+                loss,newparams=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,30,pat,hyps[run],methodnum,run,1,run_to_load,np.min([timesinceimproves[run]-1,1]), toexplores[run])
                 data[j, i] = loss
                 if len(newparams) > 0:
                     hyps[run] = [hyps[run][0], hyps[run][1]]
@@ -50,16 +50,15 @@ def pbt(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,te
             if loss < bestlosses[run]:
                 bestlosses[run] = loss
                 if i > 0:
-                    copyfile(str(run)+'.'+str(timesinceimproves[run])+'.opt.pt',str(run)+'.'+'0.opt.pt')
-                    copyfile(str(run)+'.'+str(timesinceimproves[run])+'.pt',str(run)+'.'+'0.pt')
+                    copyfile(str(run)+'.'+str(1)+'.opt.pt',str(run)+'.'+'0.opt.pt')
+                    copyfile(str(run)+'.'+str(1)+'.pt',str(run)+'.'+'0.pt')
                     timesinceimproves[run] = 1
             else:
                 timesinceimproves[run]+=1
  
             # sufficient improvement
-            if i > 0 and i % patcheck == 0:
+            if True:
                 if run != np.argmin(bestlosses):
-                    patcheck = patcheck+30
                     # exploit
                     bestrun = np.argmin(bestlosses)
                     hyps[run] = hyps[bestrun]

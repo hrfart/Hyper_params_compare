@@ -7,7 +7,7 @@ import os
 use_cuda=False
 data_dir = 'data_sets'
 output_dir = 'output'
-output_file = 'results.csv'
+output_file = 'results2.csv'
 
 save_loss_curves=False
 

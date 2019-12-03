@@ -16,7 +16,7 @@ from bayesian_opt_utils import *
 from global_utils_cfg import *
 import time
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
 
 # Create output directory if it doesn't exist
 try:
@@ -187,10 +187,10 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,maxiters,pat,opts,metho
 
 
     device = torch.device("cuda" if use_cuda else "cpu")
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    kwargs = {}
 
     #set up model
-    model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
+    model = nn.DataParallel(Net(trainx.shape[1],dataset,layers,nodes)).to(device)    
     optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
     if load!=None:
         model=torch.load(str(loadrun)+'.'+str(load)+'.pt')
