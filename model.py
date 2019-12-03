@@ -55,48 +55,49 @@ else:
 ##########################################    MAIN SECTION: RUNS ANALYSES   ##########################################################
 
 def main():
-    for dataset in configured_datasets:#,1,0,3]:
-        #load data
-        trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
+    for (max_gd_iters_per_cfg, num_models) in zip(configured_max_gd_iters, configured_num_models):
+        for dataset in configured_datasets:
+            #load data
+            trainx,trainy,valx,valy,testx,testy=loaddata(dataset)
 
-        #start timers
-        start = time.time()
-        pstart = time.process_time()
-        #do random grid search
-        if optmethod==0:
-            lowestval,lowesttest,best,all=randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy)
+            #start timers
+            start = time.time()
+            pstart = time.process_time()
+            #do random grid search
+            if optmethod==0:
+                lowestval,lowesttest,best,all=randomgridsearch(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,testy)
 
-        if optmethod==1:
-            lowestval,lowesttest,best,all=bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy)
+            if optmethod==1:
+                lowestval,lowesttest,best,all=bayesian_optimization(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,testy)
 
-        if optmethod==2:
-            lowestval,lowesttest,best,all=hyperband(iterations,HBAND_H,dataset,trainx,trainy,valx,valy,testx,testy)
+            if optmethod==2:
+                lowestval,lowesttest,best,all=hyperband(max_gd_iters_per_cfg,HBAND_H,dataset,trainx,trainy,valx,valy,testx,testy)
 
-        if optmethod==3:
-            lowestval,lowesttest,best,all=pbt(dataset,trainx,trainy,valx,valy,testx,testy)
-
-
+            if optmethod==3:
+                lowestval,lowesttest,best,all=pbt(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,testy)
 
 
-        #write outputs
-        out=sets[dataset]+","+methods[optmethod]+','+str(lowesttest)+','+str(lowestval)
-        for f in range(7):
-            out=out+','+str(best[f])
-        out=out+','+str(time.time()-start)+','+str(time.process_time()-pstart)
-        t=open(output_file,"a+")
-        t.write(out+',\n')
-        t.close()
 
-        #plot all iterations validation
-        plt.plot(np.arange(len(all)),all)
-        plt.xlabel('algorithm iteration')
-        plt.ylabel('loss')
-        plt.title(sets[dataset]+' '+methods[optmethod])
-        plt.savefig(create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".png"]))
-        plt.clf()
 
-        #probably also a good idea to save the data so we can make more involved plots later.
-        joblib.dump(all,create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl"]))
+            #write outputs
+            out=sets[dataset]+","+methods[optmethod]+','+str(lowesttest)+','+str(lowestval)
+            for f in range(7):
+                out=out+','+str(best[f])
+            out=out+','+str(time.time()-start)+','+str(time.process_time()-pstart)+','+str(int(max_gd_iters_per_cfg*num_models))
+            t=open(output_file,"a+")
+            t.write(out+',\n')
+            t.close()
+
+            #plot all iterations validation
+            plt.plot(np.arange(len(all)),all)
+            plt.xlabel('algorithm iteration')
+            plt.ylabel('loss')
+            plt.title(sets[dataset]+' '+methods[optmethod])
+            plt.savefig(create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".png"]))
+            plt.clf()
+
+            #probably also a good idea to save the data so we can make more involved plots later.
+            joblib.dump(all,create_file_path([output_dir,sets[dataset]+'.'+methods[optmethod]+'.'+datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')+".pkl"]))
 
 
 ##########################################    BASE MODEL SECTION   ##########################################################
@@ -173,7 +174,7 @@ def longCEL(x,y):
 #returns loss for validation set and test set
 #dataset input is so the correct loss is used.
 #the last four optional parameters are for the PBT method only.
-def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, explore = 0, evaluate=False):
+def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,maxiters,pat,opts,method=optmethod,run=None,path=None,loadrun=None,load=None,explore=0,evaluate=False):
 
     #print("opts = {}".format(opts))
     layers=int(opts[0])
@@ -465,7 +466,7 @@ def evaluation_plot(dataset,a,b):
 ###########################  RANDOM GRID SEARCH SECTION   ######################################################
 #inputs are data set to use, and the loaded data
 #outputs final val and test loss,best parameters chosen
-def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
+def randomgridsearch(gd_max_iters,grid_iters,dataset,trainx,trainy,valx,valy,testx,testy):
 
     #initialize best and current params
     best=np.zeros(7)
@@ -487,7 +488,7 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
         current[6]=decay_opts[np.random.randint(0,100)]
 
         #calculate loss
-        loss, test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,current,0)
+        loss, test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,gd_max_iters,pat,current,0)
         all[f]=loss
 
 
@@ -506,7 +507,7 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
 
 
 ##PBT example model running
-def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
+def randomgridsearch_PBT_EX(gd_max_iters,grid_iters,dataset,trainx,trainy,valx,valy,testx,testy):
 
     #initialize best and current params
     best=np.zeros(7)
@@ -535,7 +536,7 @@ def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
         loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0)
         bestloss=np.inf
         timesinceimprove=1
-        for i in range(1,iterations):
+        for i in range(1,gd_max_iters):
             loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,run_to_load,timesinceimprove-1)
             if loss<bestloss:
                 bestloss=loss

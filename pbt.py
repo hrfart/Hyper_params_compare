@@ -1,10 +1,9 @@
 from model import *
 import os, shutil
 
-def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
+def pbt(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,testy):
     #initialize best and current params
-    num_iters = 300
-    num_models = 25
+    num_iters = max_gd_iters_per_cfg
     methodnum = 3
     patcheck = 30
     
@@ -17,7 +16,7 @@ def pbt(dataset,trainx,trainy,valx,valy,testx,testy):
 
     hyps = []
     perfs = [ [] for i in range(num_models)]
-    for i in range(num_iters):
+    for i in range(int(np.ceil(num_iters/30))):
         for j in range(num_models):
             if min(timesinceimproves) > 10:
                 break

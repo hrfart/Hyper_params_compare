@@ -56,10 +56,10 @@ def acquisition(X, Xsamples, model):
     return probs
  
 # optimize the acquisition function
-def opt_acquisition(X, y, model):
+def opt_acquisition(X, y, model, num_models):
     
     # random search, generate random samples
-    Xsamples = get_hyperparameter_configuration(100)
+    Xsamples = get_hyperparameter_configuration(num_models)
     Xsamples = np.transpose(Xsamples) 
     
 	# calculate the acquisition function for each sample
@@ -77,7 +77,7 @@ def opt_acquisition(X, y, model):
 ###########################  BAYESIAN OPTIMIZATION SECTION   ######################################################
 #inputs are data set to use, and the loaded data
 #outputs final val and test loss,best parameters chosen
-def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
+def bayesian_optimization(max_gd_iters_per_cfg,num_models,dataset,trainx,trainy,valx,valy,testx,testy):
 
     #initialize best and current params
     initial_hyper_vals = np.zeros(NUM_HYPERPARAMS) 
@@ -89,7 +89,7 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
     initial_hyper_vals[5]= 10**-7 #eps_opts[np.random.randint(0,100)]
     initial_hyper_vals[6]= 0 #decay_opts[np.random.randint(0,100)]
     
-    loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,initial_hyper_vals)
+    loss, b, c= mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,max_gd_iters_per_cfg,pat,initial_hyper_vals)
     loss = np.array(loss)
 
     #Initial Values
@@ -106,7 +106,7 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
         Xt = get_hyperparameter_configuration(1)
         
         #print(np.shape(Xt[:, 0]))
-        loss, b, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,Xt[:, 0])
+        loss, b, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,max_gd_iters_per_cfg,pat,Xt[:, 0])
         
         
         Xt_r = np.reshape(Xt, (1, NUM_HYPERPARAMS)) #reshape 
@@ -129,16 +129,16 @@ def bayesian_optimization(dataset,trainx,trainy,valx,valy,testx,testy):
     lowesttest=9999 #lowesttest - lowest test loss
     
     #to look at all
-    all=np.zeros(100)
+    all=np.zeros(num_models)
 
-    for f in range(100):
+    for f in range(num_models):
         
         #Select next hyperparameter values 
-        current = opt_acquisition(X, y, model)
+        current = opt_acquisition(X, y, model, num_models)
         curr = np.reshape(current, NUM_HYPERPARAMS, 1)
         
         #calculate loss
-        loss, test, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,iterations,pat,curr)
+        loss, test, c =mod.runmodel(dataset,trainx,trainy,valx,valy,testx,testy,max_gd_iters_per_cfg,pat,curr)
         
         """ Update surrogate """
         # add the data to the dataset
