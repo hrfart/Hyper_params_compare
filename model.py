@@ -175,7 +175,7 @@ def longCEL(x,y):
 #the last four optional parameters are for the PBT method only.
 def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opts, method=optmethod, run=None, path=None, loadrun=None, load=None, explore = 0, evaluate=False):
 
-    #print("opts = {}".format(opts))
+    #set hyperparameters.
     layers=int(opts[0])
     nodes=int(opts[1])
     learnrate=opts[2]
@@ -191,6 +191,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
     #set up model
     model = Net(trainx.shape[1],dataset,layers,nodes).to(device)
     optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
+    #load in previous model for PBT
     if load!=None:
         model=torch.load(str(loadrun)+'.'+str(load)+'.pt')
         optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
@@ -221,7 +222,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
             param_group['weight_decay'] = wd
             newparams = [lr, b0, b1, eps, wd]
 
-    #loss function
+    #select loss function
     loss_func=torch.nn.MSELoss()
     if dataset==0:
         loss_func=torch.nn.BCELoss()
@@ -275,31 +276,35 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                 val_loss += loss_func(output, target).item()
 
         if dataset<2:
-            val_loss /= len(val_loader)
+            val_loss /= len(val_loader) #take mean value if metric isn't mse.
         print(val_loss)
 
 
 
-        if path!=None:
-            torch.save(model,weightspath)
-            torch.save(optimizer.state_dict(),create_file_path([str(run)+'.'+str(path)+'.opt.pt'], False))
+            
 
 
-
+        #keep track of best loss
         if val_loss<bestvalloss:
             bestvalloss=val_loss
             timesinceimprove=0
-            if path==None:
-                torch.save(model,weightspath)
-        else:
+            #save the model if there was improvement
+            torch.save(model,weightspath)
+            if path!=None:
+                #also save optimizer state for PBT.
+                torch.save(optimizer.state_dict(),create_file_path([str(run)+'.'+str(path)+'.opt.pt'], False))
+        else: #increment time since last improvement.            
             timesinceimprove+=1
+        #quit if there hasn't been improvement for sufficiently many iterations
         if timesinceimprove>pat:
             break
-
+    
+    
+    #if this is a PBT non-evaluation run, only return the validation loss and the paramater
     if path!=None and not evaluate:
         return bestvalloss,newparams
     else:
-        #evaluate test data
+        #evaluate test data and return full predicted values.
         testout=[]
         test_loss=0
         #load best model
@@ -310,7 +315,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
                 if dataset==1:
                     target=target.squeeze().long()
                 output = model.forward(data,dataset,layers)
-                test_loss += loss_func(output, target).item()  # sum up batch loss
+                test_loss += loss_func(output, target).item()  # sum loss
                 for t in output:
                     if use_cuda:
                         t=t.cpu()
