@@ -197,10 +197,12 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
         optimizer = optim.Adam(model.parameters(), lr=learnrate, betas=(beta1, beta2), eps=eps, weight_decay=decay, amsgrad=False)
         optimizer.load_state_dict(torch.load(str(loadrun)+'.'+str(load)+'.opt.pt'))
 
+    # explore step of PBT
     newparams = []
     if explore:
         plusminus = [-1, 1]
         for param_group in optimizer.param_groups:
+            # small perturbation to add to each optimization hyperparameter
             lrchange = param_group['lr']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
             b0change = param_group['betas'][0]*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
             b1change = param_group['betas'][1]*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
@@ -208,6 +210,7 @@ def runmodel(dataset,trainx,trainy,valx,valy,testx,testy,    maxiters,pat,   opt
             wdchange = param_group['weight_decay']*np.random.rand()*plusminus[np.random.randint(0, 2)]/10.0
 
 
+            # update the hyperparameters
             lr = min(max(param_group['lr'] + lrchange, 1e-7), 1e-2)
             bparam1 = min(max(0.85, param_group['betas'][0] + b0change), 0.95)
             bparam2 = min(max(0.9, param_group['betas'][1] + b1change), 0.99999)
