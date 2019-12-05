@@ -505,67 +505,6 @@ def randomgridsearch(dataset,trainx,trainy,valx,valy,testx,testy):
 
 
 
-##PBT example model running
-def randomgridsearch_PBT_EX(dataset,trainx,trainy,valx,valy,testx,testy):
-
-    #initialize best and current params
-    best=np.zeros(7)
-    current=np.zeros(7)
-    lowestval=np.inf
-    lowesttest=np.inf
-
-    #to look at all
-    all=np.zeros(grid_iters)
-
-    for f in range(grid_iters):
-        #do randomization
-        current[0]=layer_opts[np.random.randint(0,6)]
-        current[1]=node_opts[np.random.randint(0,5)]
-        current[2]=learnrate_opts[np.random.randint(0,100)]
-        current[3]=beta1_opts[np.random.randint(0,100)]
-        current[4]=beta2_opts[np.random.randint(0,100)]
-        current[5]=eps_opts[np.random.randint(0,100)]
-        current[6]=decay_opts[np.random.randint(0,100)]
-
-
-
-        #set up
-        run=0 #which run out of 10 it is.
-        run_to_load=0
-        loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0)
-        bestloss=np.inf
-        timesinceimprove=1
-        for i in range(1,iterations):
-            loss=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,timesinceimprove,run_to_load,timesinceimprove-1)
-            if loss<bestloss:
-                bestloss=loss
-                copyfile(str(run)+'.'+str(timesinceimprove)+'.opt.pt',str(run)+'.'+'0.opt.pt')
-                copyfile(str(run)+'.'+str(timesinceimprove)+'.pt',str(run)+'.'+'0.pt')
-                timesinceimprove=1
-            else:
-                timesinceimprove+=1
-            if timesinceimprove>pat:
-                break
-
-        #do evaluation
-        loss,test,testeval=runmodel(dataset,trainx,trainy,valx,valy,testx,testy,1,pat,current,0,run,0,run_to_load,0,evaluate=True)
-
-        all[f]=loss
-
-
-
-        #if this is the best so far save parameters
-        if(loss<lowestval):
-            lowestval=loss
-            lowesttest=test
-            best=np.copy(current)
-            #plot best test results
-            evaluation_plot(dataset,testy,testeval)
-
-
-    return lowestval,lowesttest,best,all
-
-
 
 
 

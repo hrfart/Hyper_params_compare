@@ -20,9 +20,8 @@ Four Data sets are used for evaluation
 
 
 model.py contains the bulk of the code including the neural network model and comparison architecture.
-It takes as an argument an integer 1-4 indicating the hyperparamater method to run. 
-It will loop through all 4 datasets.
-and outputs plots showing the data fit for the best hyperparameters found, and loss at each algorithm iteration.
+It takes as an argument an integer 0-3 indicating the hyperparamater method to run. 
+It will loop through all 4 datasets and outputsplots showing the data fit for the best hyperparameters found, and loss at each algorithm iteration.
 Also outputted are the the optimal loss and hyperparameters found in a csv file.
 
 The model being optimized is a fully connected Neural network implemented in Pytorch with an Adam optimizer.
@@ -42,7 +41,7 @@ mlxtend.data (http://rasbt.github.io/mlxtend/)
 
 joblib (https://joblib.readthedocs.io/en/latest/)
 
-Note: Currently set up to run on CPU. To use a CUDA GPU,, set use_cuda to false in global_utils_cfg.py.
+Note: Currently set up to run on CPU. To use a CUDA GPU, set use_cuda to True in global_utils_cfg.py.
 
 References:
 
